@@ -1,0 +1,639 @@
+/* 容器和背景 */
+.container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  padding: 0; /* 重写全局样式，移除padding */
+  /* 移除背景色，让背景图片显示 */
+}
+
+/* 确保页面透明，显示背景图片 */
+page {
+  background: transparent;
+}
+
+/* 内容区域 */
+.content-area {
+  position: relative; /* 改为相对定位 */
+  width: 100%;
+  min-height: 100vh;
+  padding: 0 20rpx 20rpx 20rpx; /* 只保留左右和底部padding */
+  box-sizing: border-box;
+  background: transparent; /* 确保透明 */
+}
+
+/* 动态列表 */
+.moments-list {
+  padding-top: 0; /* 移除顶部padding */
+  padding-bottom: 160rpx;
+}
+
+/* 瞬间卡片玻璃效果 */
+.moment-item {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin: 20rpx;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+  /* 简化transition */
+  transition: transform 0.2s ease;
+}
+
+/* 移除整个瞬间的缩放效果 */
+
+/* 优化模态框动画 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  /* 简化动画 */
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 简化发布按钮动画 */
+.publish-btn {
+  position: fixed;
+  bottom: 100rpx;
+  right: 40rpx;
+  width: 120rpx;
+  height: 120rpx;
+  background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8rpx 20rpx rgba(255, 107, 107, 0.3);
+  z-index: 100;
+  /* 简化transition */
+  transition: transform 0.2s ease;
+}
+
+.publish-btn:active {
+  transform: scale(0.95);
+}
+
+/* 用户信息 */
+.user-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  position: relative;
+}
+
+.user-details {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.delete-btn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 16rpx;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:active {
+  transform: scale(0.95);
+  background: rgba(255, 245, 245, 0.9);
+}
+
+.delete-icon {
+  font-size: 28rpx;
+  color: #666;
+  opacity: 0.7;
+}
+
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  margin-right: 20rpx;
+  background-color: #e0e0e0;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.username {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: rgb(21, 21, 21) !important;
+  margin-bottom: 8rpx;
+  opacity: 1 !important;
+}
+
+.time {
+  font-size: 24rpx;
+  color: rgba(153, 153, 153, 1) !important;
+  opacity: 1 !important;
+}
+
+/* 内容文本 */
+.content {
+  margin-bottom: 20rpx;
+  line-height: 1.6;
+  font-size: 30rpx;
+}
+
+.content text {
+  color: rgb(12, 11, 11) !important;
+  opacity: 1 !important;
+}
+
+/* 图片网格 */
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 20rpx;
+}
+
+.grid-image {
+  border-radius: 12rpx;
+  background-color: #f0f0f0;
+}
+
+.grid-single {
+  width: 400rpx;
+  height: 400rpx;
+}
+
+.grid-multiple {
+  width: calc((100% - 20rpx) / 3);
+  height: 200rpx;
+}
+
+/* 互动区域 */
+.interaction-area {
+  display: flex;
+  align-items: center;
+  gap: 40rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+/* 点赞按钮容器 */
+.like-btn-container {
+  position: relative;
+  display: inline-block;
+}
+
+.like-btn, .comment-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 25rpx;
+  background-color: #f8f8f8;
+  transition: all 0.2s ease;
+  opacity: 0.5 !important;
+}
+
+.like-btn:active {
+  transform: scale(0.95);
+  background-color: #ffe6e6;
+}
+
+/* 飘心动画效果 */
+.floating-hearts {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.floating-heart {
+  position: absolute;
+  font-size: 32rpx;
+  opacity: 0;
+  animation: floatUp 2s ease-out forwards;
+  pointer-events: none;
+}
+
+.floating-heart.heart-1 {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.floating-heart.heart-2 {
+  left: 50%;
+  animation-delay: 0.3s;
+}
+
+.floating-heart.heart-3 {
+  left: 80%;
+  animation-delay: 0.6s;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-60rpx) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120rpx) scale(0.6);
+  }
+}
+
+.like-btn.liked {
+  background-color: #ffe6e6;
+}
+
+.like-btn .icon, .comment-btn .icon {
+  font-size: 28rpx;
+}
+
+.like-btn .count, .comment-btn .count {
+  font-size: 24rpx;
+  color: rgb(22, 21, 21) !important;
+  opacity: 1 !important;
+}
+
+/* 评论区域 */
+.comments-section {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+  opacity: 1 !important;
+}
+
+.comment-item {
+  margin-bottom: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.comment-user {
+  color: rgba(53, 41, 41, 1) !important;
+  font-weight: 500;
+  margin-right: 8rpx;
+  opacity: 1 !important;
+}
+
+.comment-text {
+  color: rgb(53, 41, 41) !important;
+  opacity: 1 !important;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 100rpx 0;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 加载状态 */
+.loading-state {
+  text-align: center;
+  padding: 40rpx 0;
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 发布按钮 */
+.fab-btn {
+  position: fixed;
+  bottom: 40rpx;
+  right: 40rpx;
+  width: 120rpx;
+  height: 120rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  border-radius: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15), 0 4rpx 16rpx rgba(0, 0, 0, 0.1), inset 0 1rpx 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20rpx);
+  z-index: 100;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.fab-btn::before {
+  content: '';
+  position: absolute;
+  top: -2rpx;
+  left: -2rpx;
+  right: -2rpx;
+  bottom: -2rpx;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.3));
+  border-radius: 62rpx;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+.fab-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.4s ease;
+  z-index: 0;
+}
+
+.fab-btn:hover::before {
+  opacity: 1;
+}
+
+.fab-btn:hover::after {
+  width: 100rpx;
+  height: 100rpx;
+}
+
+.fab-btn:active {
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2), 0 2rpx 8rpx rgba(0, 0, 0, 0.15), inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
+}
+
+.fab-icon {
+  font-size: 50rpx;
+  color: rgba(100, 100, 100, 0.8);
+  font-weight: 200;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1rpx 2rpx rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* 发布弹窗 */
+.publish-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.publish-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  width: 100%;
+  background-color: white;
+  border-radius: 30rpx 30rpx 0 0;
+  max-height: 80vh;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.publish-modal.show .modal-content {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 40rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-btn {
+  font-size: 48rpx;
+  color: #999;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 40rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.content-input {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 15rpx;
+  font-size: 30rpx;
+  line-height: 1.5;
+  margin-bottom: 30rpx;
+  box-sizing: border-box;
+}
+
+/* 图片选择器 */
+.image-selector {
+  margin-bottom: 30rpx;
+}
+
+.selected-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15rpx;
+}
+
+.image-item {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+}
+
+.image-item image {
+  width: 100%;
+  height: 100%;
+  border-radius: 12rpx;
+}
+
+.delete-image {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background-color: #ff4757;
+  color: white;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.add-image {
+  width: 150rpx;
+  height: 150rpx;
+  border: 2rpx dashed #ccc;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.add-icon {
+  font-size: 48rpx;
+  margin-bottom: 8rpx;
+}
+
+.add-text {
+  font-size: 24rpx;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 30rpx 40rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.cancel-btn, .publish-btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.cancel-btn {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.publish-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.publish-btn[disabled] {
+  background: #ccc;
+}
+
+/* 评论弹窗 */
+.comment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.comment-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.comment-input-area {
+  width: 100%;
+  background-color: white;
+  padding: 30rpx 40rpx;
+  display: flex;
+  align-items: center;
+  gap: 30rpx;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.1);
+}
+
+.comment-modal.show .comment-input-area {
+  transform: translateY(0);
+}
+
+.comment-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 30rpx;
+  border: 2rpx solid #f0f0f0;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  background-color: #f8f9fa;
+  transition: all 0.3s ease;
+}
+
+.comment-input:focus {
+  border-color: #667eea;
+  background-color: white;
+}
+
+.send-btn {
+  width: 140rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.send-btn:active {
+  transform: scale(0.95);
+}
+
+.send-btn[disabled] {
+  background: #ccc;
+}

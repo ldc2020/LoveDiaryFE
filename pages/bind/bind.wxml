@@ -1,0 +1,115 @@
+<view class="bind-container">
+  <!-- 背景装饰 -->
+  <view class="bg-decoration">
+    <view class="heart heart-1">💕</view>
+    <view class="heart heart-2">💖</view>
+    <view class="heart heart-3">💝</view>
+  </view>
+
+  <!-- 步骤1: 获取用户信息 -->
+  <view class="step-container" wx:if="{{bindStep === 1}}">
+    <view class="step-header">
+      <text class="title">甜味日记</text>
+      <text class="subtitle">记录美好时光</text>
+    </view>
+    
+    <view class="step-content">
+      <view class="icon-container">
+        <text class="icon">👫</text>
+      </view>
+      <text class="description">点击下方按钮获取专属邀请码</text>
+      <button class="primary-btn" bindtap="getUserInfo">专属邀请码</button>
+    </view>
+  </view>
+
+  <!-- 步骤1.5: 生成邀请码 -->
+  <view class="step-container" wx:if="{{bindStep === 1.5}}">
+    <view class="step-header">
+      <text class="title">生成专属邀请码</text>
+      <text class="subtitle">为您和TA创建独特的连接</text>
+    </view>
+    
+    <view class="step-content">
+      <view class="user-info">
+        <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+        <text class="nickname">{{userInfo.nickName}}</text>
+      </view>
+      
+      <view class="icon-container">
+        <text class="icon">🎫</text>
+      </view>
+      <text class="description">点击下方按钮生成您的专属邀请码</text>
+      <button class="primary-btn" bindtap="generateMyInviteCode">生成邀请码</button>
+    </view>
+  </view>
+
+  <!-- 步骤2: 显示邀请码 -->
+  <view class="step-container" wx:if="{{bindStep === 2}}">
+    <view class="step-header">
+      <text class="title">您的专属邀请码</text>
+      <text class="subtitle">请将此邀请码分享给您的TA</text>
+    </view>
+    
+    <view class="step-content">
+      <view class="user-info">
+        <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+        <text class="nickname">{{userInfo.nickName}}</text>
+      </view>
+      
+      <view class="invite-code-container">
+        <view class="code-display">
+          <text class="code-text">{{myCode}}</text>
+          <button class="copy-btn" bindtap="copyInviteCode">复制</button>
+        </view>
+        <text class="code-tip">请将此邀请码发送给您的TA</text>
+      </view>
+      
+      <button class="primary-btn" bindtap="nextStep">对方已收到邀请码</button>
+    </view>
+  </view>
+
+  <!-- 步骤3: 输入对方邀请码 -->
+  <view class="step-container" wx:if="{{bindStep === 3}}">
+    <view class="step-header">
+      <text class="title">输入对方邀请码</text>
+      <text class="subtitle">请输入您的TA发送给您的邀请码</text>
+    </view>
+    
+    <view class="step-content">
+      <view class="input-container">
+        <input 
+          class="code-input" 
+          placeholder="请输入对方的邀请码"
+          value="{{partnerCode}}"
+          bindinput="onPartnerCodeInput"
+          maxlength="50"
+        />
+      </view>
+      
+      <view class="btn-group">
+        <button class="secondary-btn" bindtap="restart">重新开始</button>
+        <button 
+          class="primary-btn {{!partnerCode || loading ? 'disabled' : ''}}" 
+          bindtap="confirmBind"
+          disabled="{{!partnerCode || loading}}"
+        >
+          {{loading ? '绑定中...' : '确认绑定'}}
+        </button>
+      </view>
+      
+      <view class="tips">
+        <text class="tip-text">💡 绑定后你们将共享情侣日记空间</text>
+        <text class="tip-text">💡 可以一起记录美好时光和回忆</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤指示器 -->
+  <view class="step-indicator">
+    <view class="step-dot {{bindStep >= 1 ? 'active' : ''}}"></view>
+    <view class="step-line {{bindStep >= 2 ? 'active' : ''}}"></view>
+    <view class="step-dot {{bindStep >= 2 ? 'active' : ''}}"></view>
+    <view class="step-line {{bindStep >= 3 ? 'active' : ''}}"></view>
+    <view class="step-dot {{bindStep >= 3 ? 'active' : ''}}"></view>
+  </view>
+</view>

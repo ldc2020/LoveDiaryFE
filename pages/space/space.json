@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "情侣空间",
+  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": false,
+  "onReachBottomDistance": 50
+}

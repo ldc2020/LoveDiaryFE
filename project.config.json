@@ -1,4 +1,5 @@
 {
+  "description": "项目配置文件",
   "compileType": "miniprogram",
   "libVersion": "trial",
   "packOptions": {
@@ -17,12 +18,27 @@
       "ignore": [],
       "disablePlugins": [],
       "outputPath": ""
-    }
+    },
+    "useCompilerPlugins": [
+      "typescript"
+    ],
+    "disableUseStrict": false,
+    "useStaticServer": true,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": false,
+    "compileHotReLoad": false,
+    "lazyloadPlaceholderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "uglifyFileName": false,
+    "uploadFileMap": true
   },
   "condition": {},
   "editorSetting": {
     "tabIndent": "auto",
     "tabSize": 2
   },
-  "appid": "wxd7f3764cdf74393b"
+  "appid": "wxd7f3764cdf74393b",
+  "cloudfunctionRoot": "cloudfunctions/"
 }

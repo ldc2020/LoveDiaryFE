@@ -1,5 +1,5 @@
-// logs.js
-const util = require('../../utils/util.js')
+// 引入工具函数
+const util = require('../../../utils/util.js')
 
 Page({
   data: {

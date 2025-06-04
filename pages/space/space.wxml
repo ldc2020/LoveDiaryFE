@@ -1,0 +1,145 @@
+<view class="container">
+  <!-- 全局背景 -->
+  <image class="global-bg-image" src="{{backgroundImage}}" mode="aspectFill"/>
+  <!-- 内容区域 -->
+  <scroll-view class="content-area" scroll-y="true" scroll-top="{{scrollTop}}" refresher-enabled="{{refresherEnabled}}" bindrefresherrefresh="onRefresh" refresher-triggered="{{loading}}" bindscroll="onScroll">
+    <!-- 情侣圈内容列表 -->
+    <view class="moments-list">
+      <view class="moment-item" wx:for="{{moments}}" wx:key="_id">
+        <!-- 用户信息 -->
+        <view class="user-info">
+          <image class="avatar" src="{{item.userAvatar || './images/default-avatar.png'}}" mode="aspectFill"></image>
+          <view class="user-details">
+            <text class="username">{{item.userName}}</text>
+            <text class="time">{{item.formattedTime}}</text>
+          </view>
+          <!-- 删除按钮 -->
+          <view class="delete-btn" bindtap="deleteMoment" data-id="{{item._id}}" data-index="{{index}}">
+            <text class="delete-icon">🗑️</text>
+          </view>
+        </view>
+        
+        <!-- 文案内容 -->
+        <view class="content" wx:if="{{item.content}}">
+          <text>{{item.content}}</text>
+        </view>
+        
+        <!-- 图片网格 -->
+        <view class="image-grid" wx:if="{{item.images && item.images.length > 0}}">
+          <image 
+            class="grid-image grid-{{item.images.length > 1 ? 'multiple' : 'single'}}" 
+            wx:for="{{item.images}}" 
+            wx:for-item="img" 
+            wx:for-index="imgIndex"
+            wx:key="imgIndex"
+            src="{{img.url || img}}" 
+            mode="aspectFill"
+            bindtap="previewImage"
+            data-urls="{{item.images}}"
+            data-current="{{img.url || img}}"
+          ></image>
+        </view>
+        
+        <!-- 互动区域 -->
+        <view class="interaction-area">
+          <view class="like-btn-container">
+            <view class="like-btn" bindtap="toggleLike" data-id="{{item._id}}" data-index="{{index}}">
+              <text class="icon">❤️</text>
+              <text class="count">{{item.likes || 0}}</text>
+            </view>
+            <!-- 点赞飘心效果 -->
+            <view class="floating-hearts" wx:if="{{item.showHearts}}">
+              <view class="floating-heart heart-1">💕</view>
+              <view class="floating-heart heart-2">💖</view>
+              <view class="floating-heart heart-3">💝</view>
+            </view>
+          </view>
+          <view class="comment-btn" bindtap="showCommentInput" data-id="{{item._id}}">
+            <text class="icon">💬</text>
+            <text class="count">{{item.comments ? item.comments.length : 0}}</text>
+          </view>
+        </view>
+        
+        <!-- 评论列表 -->
+        <view class="comments-section" wx:if="{{item.comments && item.comments.length > 0}}">
+          <view class="comment-item" wx:for="{{item.comments}}" wx:for-item="comment" wx:key="id">
+            <view class="comment-content">
+              <text class="comment-user">{{comment.userName}}</text>
+              <text class="comment-text">{{comment.content}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{moments.length === 0 && !loading}}">
+      <text class="empty-text">还没有动态，快来发布第一条吧~</text>
+    </view>
+    
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+  </scroll-view>
+  
+  <!-- 发布按钮 -->
+  <view class="fab-btn" bindtap="showPublishModal">
+    <text class="fab-icon">+</text>
+  </view>
+  
+  <!-- 发布弹窗 -->
+  <view class="publish-modal {{showPublishModal ? 'show' : ''}}" catchtap="hidePublishModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">发布动态</text>
+        <text class="close-btn" bindtap="hidePublishModal">×</text>
+      </view>
+      
+      <view class="modal-body">
+        <!-- 文案输入区域 -->
+        <textarea 
+          class="content-input" 
+          placeholder="分享你们的美好时光..." 
+          value="{{publishContent}}"
+          bindinput="onContentInput"
+          maxlength="500"
+        ></textarea>
+        
+        <!-- 图片选择区域 -->
+        <view class="image-selector">
+          <view class="selected-images">
+            <view class="image-item" wx:for="{{selectedImages}}" wx:key="index">
+              <image src="{{item}}" mode="aspectFill"></image>
+              <view class="delete-image" bindtap="removeImage" data-index="{{index}}">×</view>
+            </view>
+            <view class="add-image" wx:if="{{selectedImages.length < 9}}" bindtap="selectImages">
+              <text class="add-icon">+</text>
+              <text class="add-text">添加图片</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <view class="modal-footer">
+        <button class="cancel-btn" bindtap="hidePublishModal">取消</button>
+        <button class="publish-btn" bindtap="publishMoment" disabled="{{publishing}}">{{publishing ? '发布中...' : '发布'}}</button>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 评论输入弹窗 -->
+  <view class="comment-modal {{showCommentModal ? 'show' : ''}}" catchtap="hideCommentModal">
+    <view class="comment-input-area" catchtap="stopPropagation">
+      <input 
+        class="comment-input" 
+        placeholder="写下你的评论..." 
+        value="{{commentText}}"
+        bindinput="onCommentInput"
+        confirm-type="send"
+        bindconfirm="submitComment"
+      />
+      <button class="send-btn" bindtap="submitComment" disabled="{{!commentText}}">发送</button>
+    </view>
+  </view>
+</view>

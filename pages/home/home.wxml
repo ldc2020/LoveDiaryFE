@@ -1,0 +1,62 @@
+<!--pages/home/home.wxml-->
+<view class="container" bindtap="{{handlePageTap}}">
+  <!-- 全局背景 -->
+  <image class="global-bg-image" src="{{backgroundImage}}" mode="aspectFill"/>
+  <view class="settings-icon" catchtap="toggleSettings">
+    <text class="iconfont icon-settings"></text>
+  </view>
+  
+  <!-- 设置弹出框 -->
+  <view class="settings-popup" wx:if="{{showSettingsPopup}}" catchtap="stopPropagation">
+    <view class="popup-item" bindtap="updateBackground" data-action="updateBackground">更换背景</view>
+    <view class="popup-item" bindtap="updateCarouselImages" data-action="updateCarouselImages">更换轮播图片</view>
+    <view class="popup-item" bindtap="appendCarouselImages" data-action="appendCarouselImages">追加轮播图片</view>
+    <view class="popup-divider"></view>
+    <view class="popup-item" bindtap="changeName" data-action="changeName">修改昵称</view>
+    <view class="popup-item" bindtap="changeAvatar" data-action="changeAvatar">更换头像</view>
+    <view class="popup-divider"></view>
+    <view class="popup-item unbind-item" bindtap="showUnbindConfirm" data-action="unbind">解除绑定</view>
+  </view>
+  
+  <!-- 轮播图展示区域 -->
+  <view class="image-showCarouselImages" bindtap="showCarouselImages">
+    <swiper class="image-swiper" indicator-dots="{{true}}" autoplay="{{!showDeleteMode}}" interval="{{3000}}" duration="{{500}}" catchtap="stopPropagation">
+      <swiper-item wx:for="{{CarouselImages}}" wx:key="index">
+        <image 
+          src="{{item}}" 
+          mode="aspectFill" 
+          class="slide-image {{showDeleteMode && currentDragIndex === index ? 'dragging' : ''}}"
+          data-index="{{index}}"
+          bindlongpress="onLongPressImage"
+          bindtouchmove="onTouchMove"
+          bindtouchend="onTouchEnd"
+        />
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 删除模式下的浮动图片 -->
+  <view class="floating-image" wx:if="{{showDeleteMode}}" style="left: {{dragX - 100}}px; top: {{dragY - 100}}px;">
+    <image src="{{currentDragImage}}" mode="aspectFill" class="floating-img"/>
+  </view>
+
+  <!-- 垃圾桶区域 -->
+  <view class="trash-can-area {{isOverTrashCan ? 'active' : ''}}" wx:if="{{showTrashCan}}">
+    <view class="trash-can {{isOverTrashCan ? 'active' : ''}}">
+      <text class="delete-text">拖拽到此处删除</text>
+    </view>
+  </view>
+
+  <!-- 功能区块 -->
+  <view class="feature-blocks">
+    <navigator url="../space/space" class="feature-block">
+      <text>情侣空间</text>
+    </navigator>
+    <navigator url="/pages/plan/plan" class="feature-block">
+      <text>情侣计划</text>
+    </navigator>
+    <navigator url="/pages/fund/fund" class="feature-block">
+      <text>情侣基金</text>
+    </navigator>
+  </view>
+</view>

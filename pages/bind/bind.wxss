@@ -1,0 +1,314 @@
+.bind-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+  padding: 40rpx 60rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景装饰 */
+.bg-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heart {
+  position: absolute;
+  font-size: 60rpx;
+  opacity: 0.1;
+  animation: float 6s ease-in-out infinite;
+}
+
+.heart-1 {
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.heart-2 {
+  top: 60%;
+  right: 15%;
+  animation-delay: 2s;
+}
+
+.heart-3 {
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+/* 步骤容器 */
+.step-container {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 30rpx;
+  padding: 60rpx 40rpx;
+  margin-bottom: 40rpx;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* 步骤头部 */
+.step-header {
+  text-align: center;
+  margin-bottom: 60rpx;
+}
+
+.title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.subtitle {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 步骤内容 */
+.step-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 图标容器 */
+.icon-container {
+  margin-bottom: 40rpx;
+}
+
+.icon {
+  font-size: 120rpx;
+  display: block;
+}
+
+.description {
+  font-size: 32rpx;
+  color: #666;
+  text-align: center;
+  margin-bottom: 60rpx;
+  line-height: 1.6;
+}
+
+/* 用户信息 */
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40rpx;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  margin-bottom: 20rpx;
+  border: 4rpx solid #ff9a9e;
+}
+
+.nickname {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 邀请码容器 */
+.invite-code-container {
+  width: 100%;
+  margin-bottom: 60rpx;
+}
+
+.code-display {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  border: 2rpx solid #e9ecef;
+}
+
+.code-text {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #ff6b6b;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2rpx;
+}
+
+.copy-btn {
+  background: #ff9a9e;
+  color: white;
+  border: none;
+  border-radius: 15rpx;
+  padding: 15rpx 30rpx;
+  font-size: 24rpx;
+  margin: 0;
+}
+
+.copy-btn::after {
+  border: none;
+}
+
+.code-tip {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+}
+
+/* 输入容器 */
+.input-container {
+  width: 100%;
+  margin-bottom: 60rpx;
+}
+
+.code-input {
+  width: 100%;
+  height: 100rpx;
+  background: #f8f9fa;
+  border: 2rpx solid #e9ecef;
+  border-radius: 20rpx;
+  padding: 0 30rpx;
+  font-size: 32rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.code-input:focus {
+  border-color: #ff9a9e;
+}
+
+/* 按钮组 */
+.btn-group {
+  display: flex;
+  gap: 30rpx;
+  width: 100%;
+  margin-bottom: 40rpx;
+}
+
+/* 按钮样式 */
+.primary-btn, .secondary-btn {
+  border-radius: 50rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+  border: none;
+  margin: 0;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #ff9a9e, #ff6b6b);
+  color: white;
+  flex: 1;
+}
+
+.primary-btn.disabled {
+  background: #ccc;
+  color: #999;
+}
+
+.primary-btn::after {
+  border: none;
+}
+
+.secondary-btn {
+  background: transparent;
+  color: #ff6b6b;
+  border: 2rpx solid #ff9a9e;
+  flex: 1;
+}
+
+.secondary-btn::after {
+  border: none;
+}
+
+/* 当按钮组中只有一个按钮时 */
+.step-content .primary-btn:only-child {
+  width: 100%;
+}
+
+/* 提示信息 */
+.tips {
+  width: 100%;
+}
+
+.tip-text {
+  display: block;
+  font-size: 26rpx;
+  color: #999;
+  text-align: center;
+  margin-bottom: 15rpx;
+  line-height: 1.5;
+}
+
+/* 步骤指示器 */
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.step-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 10rpx;
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.step-dot.active {
+  background: white;
+  transform: scale(1.2);
+}
+
+.step-line {
+  width: 60rpx;
+  height: 4rpx;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.step-line.active {
+  background: white;
+}
+
+/* 响应式调整 */
+@media (max-width: 400px) {
+  .bind-container {
+    padding: 30rpx 40rpx;
+  }
+  
+  .step-container {
+    padding: 40rpx 30rpx;
+  }
+  
+  .title {
+    font-size: 42rpx;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+    gap: 20rpx;
+  }
+}
