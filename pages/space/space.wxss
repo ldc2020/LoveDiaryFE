@@ -5,11 +5,13 @@
   min-height: 100vh;
   padding: 0; /* 重写全局样式，移除padding */
   /* 移除背景色，让背景图片显示 */
+  overflow: hidden; /* 防止下拉时背景移动 */
 }
 
 /* 确保页面透明，显示背景图片 */
 page {
   background: transparent;
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 /* 内容区域 */
@@ -20,6 +22,7 @@ page {
   padding: 0 20rpx 20rpx 20rpx; /* 只保留左右和底部padding */
   box-sizing: border-box;
   background: transparent; /* 确保透明 */
+  transform: translateZ(0); /* 启用硬件加速，优化滚动性能 */
 }
 
 /* 动态列表 */

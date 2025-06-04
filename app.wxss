@@ -26,4 +26,7 @@ page {
   height: 100%;
   z-index: -1;
   opacity: 1;
+  transform: translateZ(0); /* 启用硬件加速 */
+  will-change: transform; /* 优化渲染性能 */
+  pointer-events: none; /* 防止背景图片干扰触摸事件 */
 }

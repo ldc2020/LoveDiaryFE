@@ -2,7 +2,7 @@
   <!-- 全局背景 -->
   <image class="global-bg-image" src="{{backgroundImage}}" mode="aspectFill"/>
   <!-- 内容区域 -->
-  <scroll-view class="content-area" scroll-y="true" scroll-top="{{scrollTop}}" refresher-enabled="{{refresherEnabled}}" bindrefresherrefresh="onRefresh" refresher-triggered="{{loading}}" bindscroll="onScroll">
+  <view class="content-area">
     <!-- 情侣圈内容列表 -->
     <view class="moments-list">
       <view class="moment-item" wx:for="{{moments}}" wx:key="_id">
@@ -81,7 +81,7 @@
     <view class="loading-state" wx:if="{{loading}}">
       <text>加载中...</text>
     </view>
-  </scroll-view>
+  </view>
   
   <!-- 发布按钮 -->
   <view class="fab-btn" bindtap="showPublishModal">

@@ -16,9 +16,7 @@ Page({
     coupleId: null,
     localCacheLimit: 5, // 本地缓存条数限制
     backgroundImage: '', // 背景图片
-    scrollTop: 0, // 滚动位置
-    isAtTop: true, // 是否在顶部
-    refresherEnabled: true // 是否启用下拉刷新
+    isRefreshing: false // 刷新状态
   },
 
   onLoad() {
@@ -73,40 +71,39 @@ Page({
     }
   },
 
-  // 禁用页面级下拉刷新，使用scroll-view的refresher
-  // onPullDownRefresh() {
-  //   this.refreshMoments();
-  // },
-
   /**
-   * 滚动事件监听
+   * 下拉刷新
    */
-  onScroll(e) {
-    const scrollTop = e.detail.scrollTop;
-    const isAtTop = scrollTop <= 10; // 允许10px的误差
-    
-    // 只更新是否在顶部的状态
-    if (this.data.isAtTop !== isAtTop) {
-      this.setData({
-        isAtTop: isAtTop
-      });
-    }
+  onPullDownRefresh() {
+    this.refreshData();
   },
 
   /**
-   * 下拉刷新处理（用于scroll-view的refresher）
+   * 刷新数据
    */
-  onRefresh() {
-    this.setData({ 
-      loading: true
-    });
+  async refreshData() {
+    if (this.data.isRefreshing) return;
     
-    this.refreshMoments().finally(() => {
-      this.setData({ 
-        loading: false,
-        scrollTop: 0 // 刷新完成后回到顶部
+    this.setData({ isRefreshing: true });
+    
+    try {
+      await this.getMoments();
+      wx.showToast({
+        title: '刷新成功',
+        icon: 'success',
+        duration: 1500
       });
-    });
+    } catch (error) {
+      console.error('刷新失败:', error);
+      wx.showToast({
+        title: '刷新失败',
+        icon: 'none',
+        duration: 1500
+      });
+    } finally {
+      this.setData({ isRefreshing: false });
+      wx.stopPullDownRefresh();
+    }
   },
 
   onReachBottom() {
@@ -432,94 +429,7 @@ Page({
     }
   },
 
-  /**
-   * 刷新瞬间 - 智能增量更新
-   */
-  async refreshMoments() {
-    this.setData({ refreshing: true });
-    
-    try {
-      await this.smartRefreshMoments();
-    } finally {
-      this.setData({ refreshing: false });
-      wx.stopPullDownRefresh();
-    }
-  },
 
-  /**
-   * 智能刷新 - 检查云端是否有新数据并进行增量更新
-   */
-  async smartRefreshMoments() {
-    try {
-      const db = wx.cloud.database();
-      const coupleId = this.data.coupleId;
-      
-      if (!coupleId) {
-        throw new Error('未找到情侣ID');
-      }
-
-      // 获取当前本地最新数据的ID和时间戳
-      const currentMoments = this.data.moments;
-      let queryCondition = { coupleId: coupleId };
-      
-      if (currentMoments.length > 0) {
-        // 使用最新数据的ID来避免重复，而不是时间戳
-        const latestLocalId = currentMoments[0]._id;
-        const latestLocalTimestamp = new Date(currentMoments[0].timestamp);
-        
-        // 获取比本地最新数据更新的数据，排除已有的数据
-        queryCondition = {
-          coupleId: coupleId,
-          timestamp: db.command.gte(latestLocalTimestamp)
-        };
-      }
-
-      // 从云端获取数据
-      const result = await db.collection('ld_moments')
-        .where(queryCondition)
-        .orderBy('timestamp', 'desc')
-        .get();
-        
-      // 过滤掉本地已存在的数据
-      const localIds = new Set(currentMoments.map(moment => moment._id));
-      const newData = result.data ? result.data.filter(item => !localIds.has(item._id)) : [];
-
-      if (newData && newData.length > 0) {
-        // 有新数据，进行增量更新
-        const newMomentsWithAvatars = await this.addUserAvatarsToMoments(newData);
-        
-        // 合并新数据和现有数据
-        const updatedMoments = [...newMomentsWithAvatars, ...currentMoments];
-        
-        // 限制总数量，避免数据过多
-        const limitedMoments = updatedMoments.slice(0, 50);
-        
-        this.setData({
-          moments: limitedMoments
-        });
-        
-        // 更新本地缓存
-        this.updateLocalCache(limitedMoments);
-        
-        wx.showToast({
-          title: `更新了${newMomentsWithAvatars.length}条新动态`,
-          icon: 'success',
-          duration: 2000
-        });
-      } else {
-        // 没有新数据
-        wx.showToast({
-          title: '已是最新数据',
-          icon: 'none',
-          duration: 1500
-        });
-      }
-    } catch (error) {
-      console.error('智能刷新失败:', error);
-      // 如果智能刷新失败，回退到全量刷新
-      await this.getMoments();
-    }
-  },
 
   /**
    * 显示发布模态框
