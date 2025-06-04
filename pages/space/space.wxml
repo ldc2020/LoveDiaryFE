@@ -24,20 +24,24 @@
           <text>{{item.content}}</text>
         </view>
         
-        <!-- 图片网格 -->
-        <view class="image-grid" wx:if="{{item.images && item.images.length > 0}}">
-          <image 
-            class="grid-image grid-{{item.images.length > 1 ? 'multiple' : 'single'}}" 
-            wx:for="{{item.images}}" 
-            wx:for-item="img" 
-            wx:for-index="imgIndex"
-            wx:key="imgIndex"
-            src="{{img.url || img}}" 
-            mode="aspectFill"
-            bindtap="previewImage"
-            data-urls="{{item.images}}"
-            data-current="{{img.url || img}}"
-          ></image>
+        <!-- 图片区域 -->
+        <view class="image-container" wx:if="{{item.images && item.images.length > 0}}">
+          <scroll-view class="image-scroll" scroll-x="{{item.images.length > 1}}" show-scrollbar="{{false}}">
+            <view class="image-grid {{item.images.length === 1 ? 'grid-single' : ''}}">
+              <image 
+                class="grid-image" 
+                wx:for="{{item.images}}" 
+                wx:for-item="img" 
+                wx:for-index="imgIndex"
+                wx:key="imgIndex"
+                src="{{img.url || img}}" 
+                mode="aspectFill"
+                bindtap="previewImage"
+                data-urls="{{item.images}}"
+                data-current="{{img.url || img}}"
+              ></image>
+            </view>
+          </scroll-view>
         </view>
         
         <!-- 互动区域 -->
