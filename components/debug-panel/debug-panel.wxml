@@ -1,0 +1,89 @@
+<!-- components/debug-panel/debug-panel.wxml -->
+<view class="debug-panel-container">
+  <!-- 悬浮按钮 -->
+  <view class="debug-btn" wx:if="{{showDebugBtn}}" bindtap="togglePanel">
+    <text class="debug-icon">🔧</text>
+  </view>
+  
+  <!-- 调试面板 -->
+  <view class="debug-panel {{showPanel ? 'show' : ''}}" catchtap="closePanel">
+    <view class="panel-content" catchtap="stopPropagation">
+      <!-- 面板头部 -->
+      <view class="panel-header">
+        <text class="panel-title">调试信息面板</text>
+        <view class="header-actions">
+          <text class="refresh-btn" bindtap="refreshInfo">🔄</text>
+          <text class="close-btn" bindtap="closePanel">×</text>
+        </view>
+      </view>
+      
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <text>加载中...</text>
+      </view>
+      
+      <!-- 面板内容 -->
+      <view class="panel-body" wx:else>
+        <!-- 缓存信息统计 -->
+        <view class="section">
+          <view class="section-title" bindtap="toggleCacheSection">
+            <text class="expand-icon">{{showCacheSection ? '▼' : '▶'}}</text>
+            <text>缓存信息 (总大小: {{totalCacheSizeText}})</text>
+          </view>
+          <scroll-view class="cache-list" scroll-y="true" wx:if="{{showCacheSection}}">
+            <view class="cache-item" wx:for="{{cacheInfo}}" wx:key="key" bindtap="toggleCacheDetail" data-index="{{index}}">
+              <view class="cache-header">
+                <text class="cache-key">{{item.key}}</text>
+                <text class="cache-type type-{{item.type}}">{{item.type}}</text>
+                <text class="cache-size">{{item.size}}</text>
+                <text class="expand-icon">{{item.showDetail ? '▼' : '▶'}}</text>
+              </view>
+              <view class="cache-detail" wx:if="{{item.showDetail}}">
+                <text class="detail-label">值：</text>
+                <text class="detail-value">{{item.value}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        
+        <!-- 文件统计信息 -->
+        <view class="section">
+          <view class="section-title" bindtap="toggleFileSection">
+            <text class="expand-icon">{{showFileSection ? '▼' : '▶'}}</text>
+            <text>文件统计</text>
+          </view>
+          <scroll-view class="file-list" scroll-y="true" wx:if="{{showFileSection}}">
+            <!-- 文件类型项目 -->
+            <view class="file-item" wx:for="{{fileStats}}" wx:key="type">
+              <view class="file-header" bindtap="toggleFileDetails" data-type="{{item.type}}">
+                <view class="file-type">
+                  <text class="expand-icon">{{item.expanded ? '▼' : '▶'}}</text>
+                  <text class="file-type-name">{{item.type}}</text>
+                </view>
+                <view class="file-info">
+                  <text class="file-count">{{item.count}}个</text>
+                  <text class="file-size">{{item.size}}</text>
+                </view>
+              </view>
+              
+              <!-- 文件详情列表 -->
+              <view class="file-details" wx:if="{{item.expanded && item.files && item.files.length > 0}}">
+                <view class="detail-item" wx:for="{{item.files}}" wx:for-item="file" wx:key="filePath">
+                  <view class="file-path clickable" catchtap="previewImage" data-src="{{file.filePath}}">
+                    <text wx:if="{{item.type.indexOf('图片') !== -1 || item.type.indexOf('image') !== -1}}">📷</text>
+                    <text wx:else>📄</text>
+                    {{file.filePath}}
+                  </view>
+                  <view class="file-detail-info">
+                    <text class="file-detail-size">{{file.sizeFormatted || file.size}}</text>
+                    <text class="file-detail-time" wx:if="{{file.createTimeFormatted}}">{{file.createTimeFormatted}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
