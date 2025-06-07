@@ -148,27 +148,94 @@ page {
   opacity: 1 !important;
 }
 
-/* 图片网格 */
-.image-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
+/* 图片容器 */
+.image-container {
   margin-bottom: 20rpx;
 }
 
-.grid-image {
+/* 单张图片样式 */
+.single-image-container {
+  width: 100%;
+  max-width: 500rpx;
+}
+
+.single-image {
+  width: 100%;
+  max-width: 500rpx;
+  height: 400rpx;
   border-radius: 12rpx;
   background-color: #f0f0f0;
 }
 
-.grid-single {
-  width: 400rpx;
-  height: 400rpx;
+/* 多张图片网格容器 */
+.grid-container {
+  width: 100%;
 }
 
-.grid-multiple {
-  width: calc((100% - 20rpx) / 3);
+/* 图片网格 */
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  width: 100%;
+}
+
+/* 基础网格图片样式 */
+.grid-image {
+  border-radius: 8rpx;
+  background-color: #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* 2张图片 */
+.grid-2 .grid-image {
+  width: calc((100% - 6rpx) / 2);
   height: 200rpx;
+}
+
+/* 3张图片 */
+.grid-3 .grid-image {
+  width: calc((100% - 12rpx) / 3);
+  height: 160rpx;
+}
+
+/* 4张图片 */
+.grid-4 .grid-image {
+  width: calc((100% - 6rpx) / 2);
+  height: 180rpx;
+}
+
+/* 5-6张图片 */
+.grid-5 .grid-image,
+.grid-6 .grid-image {
+  width: calc((100% - 12rpx) / 3);
+  height: 140rpx;
+}
+
+/* 7-9张图片 */
+.grid-7 .grid-image,
+.grid-8 .grid-image,
+.grid-9 .grid-image {
+  width: calc((100% - 12rpx) / 3);
+  height: 120rpx;
+}
+
+/* 超过9张图片的提示 */
+.more-images {
+  width: calc((100% - 12rpx) / 3);
+  height: 120rpx;
+  border-radius: 8rpx;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.more-count {
+  color: white;
+  font-size: 28rpx;
+  font-weight: bold;
 }
 
 /* 互动区域 */
@@ -293,13 +360,23 @@ page {
 
 /* 空状态 */
 .empty-state {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
-  padding: 100rpx 0;
+  z-index: 10;
+  pointer-events: none;
 }
 
 .empty-text {
   font-size: 28rpx;
-  color: #999;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.1);
+  padding: 20rpx 40rpx;
+  border-radius: 50rpx;
+  backdrop-filter: blur(10rpx);
 }
 
 /* 加载状态 */
@@ -308,6 +385,22 @@ page {
   padding: 40rpx 0;
   font-size: 28rpx;
   color: #999;
+}
+
+/* 加载更多状态 */
+.load-more-state {
+  text-align: center;
+  padding: 30rpx 0;
+  font-size: 26rpx;
+  color: #999;
+}
+
+.loading-more {
+  color: #007aff;
+}
+
+.no-more {
+  color: #ccc;
 }
 
 /* 发布按钮 */
@@ -484,12 +577,44 @@ page {
   background: rgba(255, 255, 255, 0.9);
   transition: all 0.3s ease;
   resize: none;
+  /* iOS兼容性修复 */
+  -webkit-appearance: none;
+  -webkit-user-select: text;
+  position: relative;
+  z-index: 1;
 }
 
 .content-input:focus {
   border-color: rgba(255, 107, 107, 0.5);
   background: rgba(255, 255, 255, 1);
   box-shadow: 0 0 0 4rpx rgba(255, 107, 107, 0.1);
+}
+
+/* iOS placeholder样式修复 */
+.content-input::-webkit-input-placeholder {
+  color: #999;
+  opacity: 1;
+  position: absolute;
+  top: 24rpx;
+  left: 24rpx;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.content-input::-moz-placeholder {
+  color: #999;
+  opacity: 1;
+}
+
+.content-input:-ms-input-placeholder {
+  color: #999;
+  opacity: 1;
+}
+
+.content-input::placeholder {
+  color: #999;
+  opacity: 1;
+  transform: translateZ(0);
 }
 
 /* 图片选择器 - 重新设计 */

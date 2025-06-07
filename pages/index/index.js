@@ -1,4 +1,6 @@
 // index.js
+// 自己的头像保存在- 存储位置 ： wx.env.USER_DATA_PATH 目录下
+// - 文件命名 ： avatar_${用户ID}_${时间戳}.jpg
 const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
 
 Page({

@@ -59,4 +59,7 @@
       <text>情侣基金</text>
     </navigator>
   </view>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
 </view>

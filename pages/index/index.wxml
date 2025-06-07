@@ -24,4 +24,7 @@
       <text class="user-motto">{{motto}}</text>
     </view>
   </view>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
 </scroll-view>

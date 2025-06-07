@@ -1,7 +1,7 @@
 {
   "pages": [
-    "pages/bind/bind",
     "pages/home/home",
+    "pages/bind/bind", 
     "pages/space/space",
     "pages/index/index",
     "pages/logs/logs"
@@ -10,6 +10,9 @@
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "Love Daily",
     "navigationBarBackgroundColor": "#ffffff"
+  },
+  "usingComponents": {
+    "debug-panel": "/components/debug-panel/debug-panel"
   },
   "style": "v2",
   "componentFramework": "glass-easel",

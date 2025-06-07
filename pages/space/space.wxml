@@ -26,22 +26,40 @@
         
         <!-- 图片区域 -->
         <view class="image-container" wx:if="{{item.images && item.images.length > 0}}">
-          <scroll-view class="image-scroll" scroll-x="{{item.images.length > 1}}" show-scrollbar="{{false}}">
-            <view class="image-grid {{item.images.length === 1 ? 'grid-single' : ''}}">
+          <!-- 单张图片显示 -->
+          <view class="single-image-container" wx:if="{{item.images.length === 1}}">
+            <image 
+              class="single-image" 
+              src="{{item.images[0].localPath || item.images[0].url || item.images[0]}}" 
+              mode="aspectFill"
+              bindtap="previewImage"
+              data-urls="{{item.images}}"
+              data-current="{{item.images[0].cloudUrl || item.images[0].url || item.images[0]}}"
+            ></image>
+          </view>
+          
+          <!-- 多张图片九宫格显示 -->
+          <view class="grid-container" wx:else>
+            <view class="image-grid grid-{{item.images.length > 9 ? 9 : item.images.length}}">
               <image 
                 class="grid-image" 
                 wx:for="{{item.images}}" 
                 wx:for-item="img" 
                 wx:for-index="imgIndex"
                 wx:key="imgIndex"
-                src="{{img.url || img}}" 
+                wx:if="{{imgIndex < 9}}"
+                src="{{img.localPath || img.url || img}}" 
                 mode="aspectFill"
                 bindtap="previewImage"
                 data-urls="{{item.images}}"
-                data-current="{{img.url || img}}"
+                data-current="{{img.cloudUrl || img.url || img}}"
               ></image>
+              <!-- 超过9张图片时显示+号 -->
+              <view class="more-images" wx:if="{{item.images.length > 9}}" bindtap="previewImage" data-urls="{{item.images}}" data-current="{{item.images[8].cloudUrl || item.images[8].url || item.images[8]}}">
+                <text class="more-count">+{{item.images.length - 8}}</text>
+              </view>
             </view>
-          </scroll-view>
+          </view>
         </view>
         
         <!-- 互动区域 -->
@@ -72,9 +90,12 @@
               <text class="comment-text">{{comment.content}}</text>
             </view>
           </view>
-        </view>
-      </view>
     </view>
+  </view>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
+</view>
     
     <!-- 空状态 -->
     <view class="empty-state" wx:if="{{moments.length === 0 && !loading}}">
@@ -85,6 +106,16 @@
     <view class="loading-state" wx:if="{{loading}}">
       <text>加载中...</text>
     </view>
+    
+    <!-- 加载更多状态 -->
+    <view class="load-more-state" wx:if="{{moments.length > 0}}">
+      <view class="loading-more" wx:if="{{loadingMore}}">
+        <text>加载更多中...</text>
+      </view>
+      <view class="no-more" wx:elif="{{!hasMore}}">
+        <text>没有更多了</text>
+      </view>
+    </view>
   </view>
   
   <!-- 发布按钮 -->
@@ -93,7 +124,7 @@
   </view>
   
   <!-- 发布弹窗 -->
-  <view class="publish-modal {{showPublishModal ? 'show' : ''}}" catchtap="hidePublishModal">
+  <view class="publish-modal {{showPublishModal ? 'show' : ''}}" catchtap="hidePublishModal" wx:if="{{moments.length === 0 || showPublishModal}}">
     <view class="modal-content" catchtap="stopPropagation">
       <view class="modal-header">
         <text class="modal-title">发布动态</text>
@@ -104,7 +135,7 @@
         <!-- 文案输入区域 -->
         <textarea 
           class="content-input" 
-          placeholder="分享你们的美好时光..." 
+          placeholder="{{publishContent ? '' : '分享你们的美好时光...'}}" 
           value="{{publishContent}}"
           bindinput="onContentInput"
           maxlength="500"
@@ -133,11 +164,11 @@
   </view>
   
   <!-- 评论输入弹窗 -->
-  <view class="comment-modal {{showCommentModal ? 'show' : ''}}" catchtap="hideCommentModal">
+  <view class="comment-modal {{showCommentModal ? 'show' : ''}}" catchtap="hideCommentModal" wx:if="{{moments.length === 0 || showCommentModal}}">
     <view class="comment-input-area" catchtap="stopPropagation">
       <input 
         class="comment-input" 
-        placeholder="写下你的评论..." 
+        placeholder="{{commentText ? '' : '写下你的评论...'}}" 
         value="{{commentText}}"
         bindinput="onCommentInput"
         confirm-type="send"
@@ -146,4 +177,7 @@
       <button class="send-btn" bindtap="submitComment" disabled="{{!commentText}}">发送</button>
     </view>
   </view>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
 </view>

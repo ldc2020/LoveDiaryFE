@@ -3,4 +3,7 @@
   <block wx:for="{{logs}}" wx:key="timeStamp" wx:for-item="log">
     <view class="log-item">{{index + 1}}. {{log.date}}</view>
   </block>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
 </scroll-view>

@@ -112,4 +112,7 @@
     <view class="step-line {{bindStep >= 3 ? 'active' : ''}}"></view>
     <view class="step-dot {{bindStep >= 3 ? 'active' : ''}}"></view>
   </view>
+  
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
 </view>
