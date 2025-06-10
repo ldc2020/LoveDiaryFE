@@ -1,4 +1,10 @@
 // 云开发已在app.js中初始化，这里不需要重复初始化
+//页面刷新：
+// 	加载旧数据
+//   加载skip条数-pageSize
+// 更新新数据
+//   查pageSize条数据库中的数据，和当前缓存数中的pageSize条做对比，看是否有新数据
+  
 Page({
   data: {
     moments: [],
@@ -81,9 +87,17 @@ Page({
   },
 
   onShow() {
-    // 页面显示时刷新数据
-    if (this.data.coupleId) {
+    // 页面显示时只在必要时刷新数据
+    // 避免与onLoad重复调用导致下载两次数据
+    if (this.data.coupleId && !this.data.moments.length && !this.data.loading) {
+      console.log('onShow: 检测到无数据且未在加载中，开始获取数据');
       this.getMoments();
+    } else {
+      console.log('onShow: 跳过数据获取，原因：', {
+        hasCoupleId: !!this.data.coupleId,
+        hasMoments: this.data.moments.length > 0,
+        isLoading: this.data.loading
+      });
     }
   },
 
@@ -306,8 +320,24 @@ Page({
    * @param {boolean} isLoadMore - 是否为加载更多操作
    */
   async getMoments(isRefresh = false, isLoadMore = false) {
-    if (this.data.loading && !isLoadMore) return;
-    if (isLoadMore && (this.data.loadingMore || !this.data.hasMore)) return;
+    // 防止重复调用的保护机制
+    if (this.data.loading && !isLoadMore) {
+      console.log('getMoments: 已在加载中，跳过重复调用');
+      return;
+    }
+    if (isLoadMore && (this.data.loadingMore || !this.data.hasMore)) {
+      console.log('getMoments: 加载更多条件不满足，跳过调用');
+      return;
+    }
+    
+    // 添加调用日志，便于调试重复调用问题
+    console.log('getMoments 被调用:', {
+      isRefresh,
+      isLoadMore,
+      currentMomentsCount: this.data.moments.length,
+      loading: this.data.loading,
+      loadingMore: this.data.loadingMore
+    });
     
     if (isLoadMore) {
       this.setData({ loadingMore: true });
@@ -337,7 +367,7 @@ Page({
 
       // 计算跳过的数量
       const skip = isLoadMore ? this.data.moments.length : 0;
-      
+      console.log('skip:'+skip);
       const result = await db.collection('ld_moments')
         .where({
           coupleId: coupleId
@@ -371,19 +401,42 @@ Page({
           // 首次加载或刷新
           // 获取本地缓存
           const cachedMoments = this.getLocalCachedMoments();
-          const hasNewData = this.checkForNewMoments(result.data, cachedMoments);
+          // 只取前pageSize条缓存数据进行比较,避免比较过多历史数据
+          const recentCachedMoments = cachedMoments.slice(0, this.data.pageSize);
+          const hasNewData = this.checkForNewMoments(result.data, recentCachedMoments);
           
           if (hasNewData) {
             // 只有在有新数据时才缓存图片和更新本地缓存
             console.log('检测到新数据，开始缓存图片并更新本地缓存');
             // 图片落盘并返回信息供下面的updateLocalCache更新缓存
             momentsWithCachedImages = await this.cacheMomentImages(momentsWithAvatars);
-            // 更新本地缓存 - 使用缓存后的数据
-            this.updateLocalCache(momentsWithCachedImages);
+            
+            // 刷新时合并新数据和现有数据，保留已加载的图片
+            const existingMoments = this.data.moments || [];
+            // 创建新数据的ID集合，用于去重
+            const newMomentIds = new Set(momentsWithCachedImages.map(m => m._id));
+            // 过滤掉已存在的数据，避免重复
+            const filteredExistingMoments = existingMoments.filter(m => !newMomentIds.has(m._id));
+            // 合并数据：新数据在前，旧数据在后
+            const mergedMoments = [...momentsWithCachedImages, ...filteredExistingMoments];
+            
+            // 更新本地缓存 - 使用合并后的完整数据
+            this.updateLocalCache(mergedMoments);
+            momentsWithCachedImages = mergedMoments;
           } else {
             // 没有新数据，使用本地缓存的图片路径
             console.log('没有新数据，使用本地缓存的图片路径');
             momentsWithCachedImages = this.applyLocalImageCache(momentsWithAvatars);
+            
+            // 即使没有新数据，也要保留已加载的图片
+            const existingMoments = this.data.moments || [];
+            if (existingMoments.length > momentsWithAvatars.length) {
+              // 如果现有数据比云端返回的数据多，说明用户已经加载了更多数据
+              // 合并云端最新数据和本地已加载的数据
+              const cloudMomentIds = new Set(momentsWithAvatars.map(m => m._id));
+              const additionalMoments = existingMoments.filter(m => !cloudMomentIds.has(m._id));
+              momentsWithCachedImages = [...momentsWithCachedImages, ...additionalMoments];
+            }
           }
           
           this.setData({
@@ -391,6 +444,8 @@ Page({
             loading: false,
             hasMore: hasMore
           });
+          // 添加日志输出当前moments数据的第一个元素的images信息
+          console.log('当前moments数据:', this.data.moments[0]?.images);
         }
       }
     } catch (error) {
@@ -446,7 +501,7 @@ Page({
     try {
       // 如果本地没有缓存数据，说明是第一次加载，需要从云端下载图片
       if (!cachedMoments || cachedMoments.length === 0) {
-        console.log('--本地没有缓存数据，需要从云端下载图片');
+        console.log('checkForNewMoments--本地没有缓存数据，需要从云端下载图片');
         return true;
       }
       
@@ -472,15 +527,19 @@ Page({
       
       // 如果ID集合不同，说明有新数据或数据发生变化
       if (cloudIds.size !== cachedIds.size) {
+        console.log('checkForNewMoments--'+cloudIds.size+':'+cachedIds.size);
+
         return true;
       }
-      
+      // 每一条id都对比
       for (let id of cloudIds) {
+        console.log('checkForNewMoments--每一条id都对比');
         if (!cachedIds.has(id)) {
           return true;
         }
       }
       
+      console.log('checkForNewMoments--false');
       return false;
     } catch (error) {
       console.error('检查新数据时出错:', error);
@@ -597,21 +656,28 @@ Page({
       const imageCacheKey = `imageCache_${this.data.coupleId}`;
       const savedImageCache = wx.getStorageSync(imageCacheKey) || {};
       
+      // 详细输出加载的缓存内容用于调试
+ 
       // 转换为Map对象
       const imageCache = new Map(Object.entries(savedImageCache));
+      
       
       this.setData({
         cacheStats: savedStats,
         imageCache: imageCache
       });
       
-      // 检查是否需要清理缓存（每1分钟检查一次 - 测试模式）
+      // 检查是否需要清理缓存
+      // 注意：将清理逻辑延迟执行，避免在数据获取过程中清理缓存导致重复下载
       const now = Date.now();
-      // if (now - savedStats.lastCleanup > 1 * 24 * 60 * 60 * 1000) {
-        if (now - savedStats.lastCleanup > 1 * 60 * 1000) {
-
-        console.log('开始定时清理缓存 - 测试模式（1分钟间隔）');
-        await this.smartCacheCleanup();
+      if (now - savedStats.lastCleanup > 1 * 24 * 60 * 60 * 1000) {
+      // if (now - savedStats.lastCleanup > 0.1 * 60 * 1000) {
+        console.log('检测到需要清理缓存，延迟2秒执行以避免与数据获取冲突');
+        // 延迟执行清理，避免与getMoments同时执行导致缓存被清空后重复下载
+        setTimeout(async () => {
+          // console.log('开始定时清理缓存 - 测试模式（0.1分钟间隔）');
+          await this.smartCacheCleanup();
+        }, 2000);
       }
       
       console.log('智能缓存系统初始化完成:', {
@@ -625,14 +691,6 @@ Page({
 
   /**
    * 智能图片缓存管理 
-   *  先看是否已经缓存，如果有直接返回
-   *  如果没有，看加上这个fileID后是否超过内存大小，
-   *  如果超过找到最近最少使用的图片移除(循环移除直到内存够用)
-   *  移除完后添加新来的图片到磁盘，并更新缓存
-   * 其他逻辑：
-   *  1. 当图片被添加到缓存时，更新访问时间和大小。（新数据）
-   *  2. 当图片被访问时，更新访问时间。（旧数据）
-
    */
   async smartImageCache(fileID) {
     try {
@@ -647,12 +705,28 @@ Page({
       // 检查是否已缓存
       if (imageCache.has(fileID)) {
         const cacheItem = imageCache.get(fileID);
-        console.log('图片已缓存,无需下载');
-        // 更新访问时间
-        cacheItem.lastAccess = now;
-        imageCache.set(fileID, cacheItem);
-        this.saveCacheData();
-        return cacheItem.localPath;
+        // 验证缓存文件是否存在
+        try {
+          const fs = wx.getFileSystemManager();
+          await new Promise((resolve, reject) => {
+            fs.access({
+              path: cacheItem.localPath,
+              success: resolve,
+              fail: reject
+            });
+          });
+          console.log('图片已缓存,无需下载');
+          // 更新访问时间
+          cacheItem.lastAccess = now;
+          imageCache.set(fileID, cacheItem);
+          this.saveCacheData();
+          return cacheItem.localPath;
+        } catch (e) {
+          // 缓存文件不存在，从缓存中移除
+          console.log('缓存文件不存在，重新下载:', fileID);
+          imageCache.delete(fileID);
+          this.saveCacheData();
+        }
       }
       
       // 下载图片
@@ -686,8 +760,19 @@ Page({
       });
       
       // 添加到缓存
+      // 确保localPath格式正确：真机上为wxfile://，开发者工具上为http://store/
+      let localPath = savedResult.savedFilePath;
+      
+      // 如果是错误的127.0.0.1格式，需要修正
+      if (localPath && localPath.includes('127.0.0.1') && localPath.includes('__store__')) {
+        // 提取文件名部分
+        const fileName = localPath.split('/').pop();
+        localPath = `http://store/${fileName}`;
+        console.log('修正本地路径格式:', savedResult.savedFilePath, '->', localPath);
+      }
+      
       const cacheItem = {
-        localPath: savedResult.savedFilePath,
+        localPath: localPath,
         size: fileSize,
         lastAccess: now,
         downloadTime: now
@@ -706,6 +791,18 @@ Page({
       return savedResult.savedFilePath;
     } catch (error) {
       console.error('智能图片缓存失败:', error);
+      // 直接返回云存储的临时链接，避免本地缓存的500错误
+      try {
+        const result = await wx.cloud.getTempFileURL({
+          fileList: [fileID]
+        });
+        if (result.fileList && result.fileList[0] && result.fileList[0].tempFileURL) {
+          console.log('使用临时链接作为降级方案:', result.fileList[0].tempFileURL);
+          return result.fileList[0].tempFileURL;
+        }
+      } catch (e) {
+        console.error('获取临时链接失败:', e);
+      }
       return fileID;
     }
   },
@@ -729,6 +826,7 @@ Page({
       let oldestFileID = null;
       let oldestTime = Date.now();
       
+      
       for (const [fileID, cacheItem] of imageCache.entries()) {
         if (cacheItem.lastAccess < oldestTime) {
           oldestTime = cacheItem.lastAccess;
@@ -750,32 +848,73 @@ Page({
   async removeCacheItem(fileID) {
     const { imageCache, cacheStats } = this.data;
     const cacheItem = imageCache.get(fileID);
-    console.log(`cacheItem.localPath: `+cacheItem.localPath);
-    if (cacheItem) {
-      // 删除本地文件
-      const fs = wx.getFileSystemManager();
-      try {
-        await new Promise((resolve, reject) => {
-          fs.removeSavedFile({
-            filePath: cacheItem.localPath,
-            success: resolve,
-            fail: reject
-          });
-        });
-      } catch (error) {
-        console.warn('删除本地文件失败:', error);
-      }
-      
-      // 更新统计信息
-      cacheStats.totalSize -= cacheItem.size;
-      cacheStats.imageCount -= 1;
-      
-      // 从缓存中移除
-      imageCache.delete(fileID);
-      
-      this.setData({ imageCache, cacheStats });
-      console.log(`移除缓存项: ${fileID}, 释放空间: ${this.formatFileSize(cacheItem.size)}`);
+    
+    // 添加空值检查，避免访问undefined的属性
+    if (!cacheItem) {
+      console.warn(`缓存项不存在: ${fileID}`);
+      return;
     }
+    
+    console.log(`cacheItem.localPath: ${cacheItem.localPath}`);
+    
+    // 删除本地文件
+    const fs = wx.getFileSystemManager();
+    try {
+      await new Promise((resolve, reject) => {
+        fs.removeSavedFile({
+          filePath: cacheItem.localPath,
+          success: resolve,
+          fail: reject
+        });
+      });
+
+    
+    } catch (error) {
+      console.warn('删除本地文件失败:', error);
+    }
+    
+    // 从coupleMoments本地存储中删除包含该fileID的瞬间数据
+    try {
+      const cacheKey = `coupleMoments_${this.data.coupleId}`;
+      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      
+      // 过滤掉包含该fileID的瞬间
+      const filteredMoments = cachedMoments.filter(moment => {
+        if (!moment.images || !Array.isArray(moment.images)) {
+          return true; // 保留没有图片的瞬间
+        }
+        
+        // 检查瞬间的图片中是否包含要删除的fileID
+        const hasTargetFile = moment.images.some(img => {
+          if (typeof img === 'string') {
+            return img === fileID;
+          } else if (typeof img === 'object' && img.cloudUrl) {
+            return img.cloudUrl === fileID;
+          }
+          return false;
+        });
+        
+        return !hasTargetFile; // 不包含目标fileID的瞬间才保留
+      });
+      
+      // 更新本地存储
+      if (filteredMoments.length !== cachedMoments.length) {
+        wx.setStorageSync(cacheKey, filteredMoments);
+        console.log(`从coupleMoments中删除了${cachedMoments.length - filteredMoments.length}个包含fileID ${fileID}的瞬间`);
+      }
+    } catch (error) {
+      console.warn('从coupleMoments删除相关瞬间失败:', error);
+    }
+    
+    // 更新统计信息
+    cacheStats.totalSize -= cacheItem.size;
+    cacheStats.imageCount -= 1;
+    
+    // 从缓存中移除
+    imageCache.delete(fileID);
+    
+    this.setData({ imageCache, cacheStats });
+    console.log(`移除缓存项: ${fileID}, 释放空间: ${this.formatFileSize(cacheItem.size)}`);
   },
 
   /**
@@ -784,8 +923,8 @@ Page({
   async smartCacheCleanup() {
     const { imageCache, cacheStats } = this.data;
     const now = Date.now();
-    // const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const sevenDaysAgo = now - 1 * 60 * 1000;
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    // const sevenDaysAgo = now - 0.1 * 60 * 1000;
     let cleanedCount = 0;
     let cleanedSize = 0;
     
@@ -820,9 +959,9 @@ Page({
   saveCacheData() {
     try {
       const { coupleId, imageCache, cacheStats } = this.data;
-      
       // 将Map转换为普通对象保存
       const imageCacheObj = Object.fromEntries(imageCache.entries());
+      
       
       wx.setStorageSync(`imageCache_${coupleId}`, imageCacheObj);
       wx.setStorageSync(`cacheStats_${coupleId}`, cacheStats);
@@ -841,7 +980,22 @@ Page({
       // 更新访问时间
       cacheItem.lastAccess = Date.now();
       this.data.imageCache.set(fileID, cacheItem);
-      return cacheItem.localPath;
+      
+      // 检查并修正路径格式
+      let localPath = cacheItem.localPath;
+      if (localPath && localPath.includes('127.0.0.1') && localPath.includes('__store__')) {
+        // 提取文件名部分
+        const fileName = localPath.split('/').pop();
+        localPath = `http://store/${fileName}`;
+        console.log('修正缓存路径格式:', cacheItem.localPath, '->', localPath);
+        
+        // 更新缓存中的路径
+        cacheItem.localPath = localPath;
+        this.data.imageCache.set(fileID, cacheItem);
+        this.saveCacheData();
+      }
+      
+      return localPath;
     }
     return fileID;
   },
@@ -867,8 +1021,9 @@ Page({
       // 获取当前缓存的数据，用于清理超出限制的图片文件
       const currentCacheData = wx.getStorageSync(cacheKey) || [];
       
-      // 智能缓存：只保存最新的50条数据，减少存储占用
-      const cacheData = moments.slice(0, 50).map(moment => ({
+      // 智能缓存：保存最新的200条数据，支持用户加载更多内容而不丢失
+      // 增加缓存限制以避免用户下拉刷新时丢失已加载的图片
+      const cacheData = moments.slice(0, 200).map(moment => ({
         ...moment,
         // 保持图片数据的完整性，包括localPath等重要信息
         images: moment.images ? moment.images.map(img => {
@@ -888,7 +1043,7 @@ Page({
       }));
       
       // 清理超过限制的图片文件，防止孤儿文件
-      this.cleanupOrphanedImages(currentCacheData, cacheData);
+      this.cleanupOrphanedImages(cacheData);
       
       wx.setStorageSync(cacheKey, cacheData);
     } catch (error) {
@@ -898,44 +1053,36 @@ Page({
 
   /**
    * 清理孤儿图片文件
-   * @param {Array} oldCacheData - 旧的缓存数据
-   * @param {Array} newCacheData - 新的缓存数据
+   * 孤儿文件定义：本地缓存中存在，但当前数据中不再使用的图片文件
+   * @param {Array} currentData - 当前的数据
    */
-  async cleanupOrphanedImages(oldCacheData, newCacheData) {
+  async cleanupOrphanedImages(currentData) {
     try {
-      // 收集新缓存中所有的图片fileID
-      const newImageIds = new Set();
-      newCacheData.forEach(moment => {
-        if (moment.images && Array.isArray(moment.images)) {
-          moment.images.forEach(img => {
-            if (typeof img === 'object' && img.cloudUrl) {
-              newImageIds.add(img.cloudUrl);
-            } else if (typeof img === 'string') {
-              newImageIds.add(img);
-            }
-          });
-        }
-      });
+      const { imageCache } = this.data;
       
-      // 收集旧缓存中被移除的图片fileID
+      // 收集当前数据中所有正在使用的图片fileID
+      const activeImageIds = new Set();
+      if (currentData && Array.isArray(currentData)) {
+        currentData.forEach(moment => {
+          if (moment.images && Array.isArray(moment.images)) {
+            moment.images.forEach(img => {
+              if (typeof img === 'object' && img.cloudUrl) {
+                activeImageIds.add(img.cloudUrl);
+              } else if (typeof img === 'string') {
+                activeImageIds.add(img);
+              }
+            });
+          }
+        });
+      }
+      
+      // 找出缓存中存在但当前数据中不再使用的图片（孤儿文件）
       const orphanedImageIds = [];
-      oldCacheData.forEach(moment => {
-        if (moment.images && Array.isArray(moment.images)) {
-          moment.images.forEach(img => {
-            let fileID = null;
-            if (typeof img === 'object' && img.cloudUrl) {
-              fileID = img.cloudUrl;
-            } else if (typeof img === 'string') {
-              fileID = img;
-            }
-            
-            // 如果旧缓存中的图片不在新缓存中，标记为孤儿文件
-            if (fileID && !newImageIds.has(fileID)) {
-              orphanedImageIds.push(fileID);
-            }
-          });
+      for (const [fileID, cacheItem] of imageCache.entries()) {
+        if (!activeImageIds.has(fileID)) {
+          orphanedImageIds.push(fileID);
         }
-      });
+      }
       
       // 清理孤儿图片文件
       if (orphanedImageIds.length > 0) {
@@ -946,6 +1093,8 @@ Page({
         }
         
         console.log(`孤儿图片文件清理完成，共清理${orphanedImageIds.length}个文件`);
+      } else {
+        console.log('未发现孤儿图片文件');
       }
     } catch (error) {
       console.error('清理孤儿图片文件失败:', error);
@@ -1065,7 +1214,8 @@ Page({
       // 智能清理：清理超过7天未访问的图片
       const now = Date.now();
       const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-      
+      // const sevenDaysAgo = now - 0.3 * 60 * 1000;
+      console.log('智能清理：清理超过7天未访问的图片')
       for (const [fileID, cacheItem] of imageCache.entries()) {
         if (cacheItem.lastAccess < sevenDaysAgo) {
           cleanedSize += cacheItem.size;
@@ -1319,6 +1469,37 @@ Page({
   },
 
   /**
+   * 图片加载错误处理
+   * 当本地缓存路径无效时，自动回退到云端URL
+   */
+  onImageLoadError(e) {
+    const { momentIndex, imageIndex } = e.currentTarget.dataset;
+    const moments = this.data.moments;
+    
+    if (moments[momentIndex] && moments[momentIndex].images[imageIndex]) {
+      const image = moments[momentIndex].images[imageIndex];
+      
+      // 如果当前使用的是localPath且加载失败，回退到云端URL
+      if (image.localPath && (image.cloudUrl || image.url)) {
+        console.warn('本地图片加载失败，回退到云端URL:', image.localPath);
+        
+        // 清除失效的localPath，让模板回退到cloudUrl或url
+        const updatePath = `moments[${momentIndex}].images[${imageIndex}].localPath`;
+        this.setData({
+          [updatePath]: null
+        });
+        
+        // 从缓存中移除这个失效的本地路径记录
+        const cacheKey = image.cloudUrl || image.url;
+        if (cacheKey && this.data.imageCache.has(cacheKey)) {
+          this.data.imageCache.delete(cacheKey);
+          this.saveCacheData();
+        }
+      }
+    }
+  },
+
+  /**
    * 预览图片
    */
   previewImage(e) {
@@ -1349,14 +1530,40 @@ Page({
     const content = this.data.publishContent.trim();
     const images = this.data.selectedImages;
     
-    if (!content && images.length === 0) {
+    // 强制要求用户必须选择图片才能发布
+    if (images.length === 0) {
       wx.showToast({
-        title: '请输入内容或选择图片',
+        title: '请至少选择一张图片',
         icon: 'none'
       });
       return;
     }
     
+    // 检查是否有内容（可选，但建议有内容描述）
+    if (!content) {
+      wx.showModal({
+        title: '提示',
+        content: '您还没有添加文字描述，确定要发布吗？',
+        success: (res) => {
+          if (res.confirm) {
+            // 用户确认发布，继续执行发布逻辑
+            this.executePublish(content, images);
+          }
+        }
+      });
+      return;
+    }
+    
+    // 如果有内容，直接执行发布
+    this.executePublish(content, images);
+  },
+
+  /**
+   * 执行发布瞬间的核心逻辑
+   * @param {string} content - 发布内容
+   * @param {Array} images - 选择的图片数组
+   */
+  async executePublish(content, images) {
     if (this.data.publishing) return;
     
     this.setData({ publishing: true });
@@ -1847,12 +2054,14 @@ Page({
    */
   async preloadRecentImages() {
     try {
-      const moments = this.data.moments.slice(0, 5); // 只预加载最新5条
+      const moments = this.data.moments.slice(0, pageSize); // 只预加载最新5条
       const preloadPromises = [];
       
       moments.forEach(moment => {
         if (moment.images && moment.images.length > 0) {
           moment.images.forEach(img => {
+            // fileID 是云存储中图片文件的唯一标识符，用于从云存储中获取图片。
+            // 例如: cloud://love-diary-xxxxx.xxxx-xxxx/moments/image_123456.jpg
             const fileID = typeof img === 'string' ? img : img.cloudUrl;
             if (fileID && !this.data.imageCache.has(fileID)) {
               preloadPromises.push(

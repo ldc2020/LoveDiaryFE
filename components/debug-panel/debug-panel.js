@@ -9,6 +9,7 @@ Component({
     fileStats: [],
     totalCacheSize: 0,
     totalCacheSizeText: '0 B',
+    totalCacheCount: 0, // 缓存文件数统计
     loading: false,
     fileDetails: {}, // 存储每种文件类型的详细文件列表
     showCacheSection: true, // 缓存信息折叠状态
@@ -105,7 +106,6 @@ Component({
       try {
         // 获取所有存储的key
         const storageInfo = wx.getStorageInfoSync();
-        console.log('[缓存信息] 开始获取缓存信息, 总键数:', storageInfo.keys.length);
         
         for (const key of storageInfo.keys) {
           try {
@@ -113,12 +113,21 @@ Component({
             const size = this.calculateSize(value);
             totalSize += size;
             
+            // 计算元素个数
+            let elementCount = '';
+            if (Array.isArray(value)) {
+              elementCount = `${value.length}个元素`;
+            } else if (typeof value === 'object' && value !== null) {
+              elementCount = `${Object.keys(value).length}个属性`;
+            }
+            
             cacheInfo.push({
               key,
               type: this.getKeyType(key),
               size: this.formatSize(size),
               value: this.formatValue(value),
               rawValue: value, // 添加原始值用于展示
+              elementCount: elementCount, // 添加元素个数信息
               showDetail: false
             });
           } catch (error) {
@@ -126,10 +135,10 @@ Component({
           }
         }
         
-        console.log('[缓存信息] 缓存统计完成, 总大小:', this.formatSize(totalSize));
         this.setData({ 
           totalCacheSize: totalSize,
           totalCacheSizeText: this.formatSize(totalSize),
+          totalCacheCount: cacheInfo.length,
           cacheInfo: cacheInfo.sort((a, b) => this.parseSize(b.size) - this.parseSize(a.size))
         });
         
@@ -206,11 +215,9 @@ Component({
             // 按大小排序
             result.sort((a, b) => this.parseSize(b.size) - this.parseSize(a.size));
             
-            console.log(`[保存文件统计] 统计完成: 总共 ${savedFileList.fileList.length} 个文件, ${this.formatSize(totalSize)}, ${result.length} 种类型`);
             return result;
             
           } else {
-            console.log('[保存文件统计] 没有发现保存文件');
             return [{
               type: '暂无保存文件',
               count: 0,
@@ -403,24 +410,34 @@ Component({
         }
         
         if (Array.isArray(value)) {
+          // 对数组进行详细格式化，使用递归函数处理嵌套对象
+          const formatObjectRecursive = (obj, depth = 0, maxDepth = 2) => {
+            if (depth > maxDepth) {
+              return '[深度限制]';
+            }
+            
+            const preview = {};
+            Object.keys(obj).forEach(key => {
+              const val = obj[key];
+              if (val === null || val === undefined) {
+                preview[key] = String(val);
+              } else if (typeof val === 'object') {
+                if (Array.isArray(val)) {
+                  preview[key] = val.length <= 3 ? val : [...val.slice(0, 3), `...还有${val.length - 3}项`];
+                } else {
+                  preview[key] = formatObjectRecursive(val, depth + 1, maxDepth);
+                }
+              } else {
+                const strVal = String(val);
+                preview[key] = strVal.length > 30 ? strVal.substring(0, 30) + '...' : strVal;
+              }
+            });
+            return preview;
+          };
+          
           const formattedArray = value.map(item => {
             if (typeof item === 'object' && item !== null) {
-              // 对于数组中的对象，我们提取一些关键信息
-              const preview = {};
-              if (item.id) preview.id = item.id;
-              if (item._id) preview._id = item._id;
-              if (item.type) preview.type = item.type;
-              if (item.name) preview.name = item.name;
-              if (item.title) preview.title = item.title;
-              if (item.content) preview.content = item.content?.substring(0, 20) + '...';
-              if (item.createTime) preview.createTime = new Date(item.createTime).toLocaleString();
-              if (Object.keys(preview).length === 0) {
-                // 如果没有这些关键字段，则显示对象的所有顶层属性名
-                Object.keys(item).forEach(key => {
-                  preview[key] = typeof item[key] === 'object' ? '[Object]' : String(item[key]).substring(0, 20);
-                });
-              }
-              return preview;
+              return formatObjectRecursive(item);
             }
             return item;
           });
@@ -428,19 +445,51 @@ Component({
         }
         
         if (typeof value === 'object' && value !== null) {
-          // 对于普通对象，我们直接显示其属性
-          const preview = {};
-          Object.keys(value).forEach(key => {
-            const val = value[key];
-            if (val === null || val === undefined) {
-              preview[key] = String(val);
-            } else if (typeof val === 'object') {
-              preview[key] = Array.isArray(val) ? `[Array(${val.length})]` : '[Object]';
-            } else {
-              preview[key] = String(val);
+          // 对于普通对象，我们递归显示其详细内容
+          const formatObjectRecursive = (obj, depth = 0, maxDepth = 3) => {
+            if (depth > maxDepth) {
+              return '[深度限制]';
             }
-          });
-          return JSON.stringify(preview, null, 2);
+            
+            const preview = {};
+            Object.keys(obj).forEach(key => {
+              const val = obj[key];
+              if (val === null || val === undefined) {
+                preview[key] = String(val);
+              } else if (typeof val === 'object') {
+                if (Array.isArray(val)) {
+                  // 对数组进行格式化，显示前几个元素
+                  if (val.length === 0) {
+                    preview[key] = '[]';
+                  } else if (val.length <= 3) {
+                    preview[key] = val.map(item => 
+                      typeof item === 'object' && item !== null 
+                        ? formatObjectRecursive(item, depth + 1, maxDepth)
+                        : item
+                    );
+                  } else {
+                    const firstThree = val.slice(0, 3).map(item => 
+                      typeof item === 'object' && item !== null 
+                        ? formatObjectRecursive(item, depth + 1, maxDepth)
+                        : item
+                    );
+                    preview[key] = [...firstThree, `...还有${val.length - 3}项`];
+                  }
+                } else {
+                  // 对嵌套对象进行递归格式化
+                  preview[key] = formatObjectRecursive(val, depth + 1, maxDepth);
+                }
+              } else {
+                // 对字符串进行长度限制
+                const strVal = String(val);
+                preview[key] = strVal.length > 50 ? strVal.substring(0, 50) + '...' : strVal;
+              }
+            });
+            return preview;
+          };
+          
+          const formattedValue = formatObjectRecursive(value);
+          return JSON.stringify(formattedValue, null, 2);
         }
         
         return String(value);

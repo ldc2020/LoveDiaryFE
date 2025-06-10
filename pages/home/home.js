@@ -137,17 +137,45 @@ Page({
 
   
   /**
-   * 追加保存多张图片到本地存储
+   * 压缩图片
    */
-  unifiedSaveImagesToStorage(tempFilePaths,dataKey,isFirstLoad, oldImages = []) {
+  async compressImage(tempFilePath) {
+    return new Promise((resolve, reject) => {
+      // 对于轮播图，使用更高的压缩比例以节省存储空间，但保持原始比例
+      wx.compressImage({
+        src: tempFilePath,
+        quality: 60, // 压缩质量，范围0-100，60为较好的平衡点
+        // 移除 compressedWidth 和 compressedHeight 以保持原始比例
+        success: (res) => {
+          console.log('图片压缩成功:', {
+            原始路径: tempFilePath,
+            压缩后路径: res.tempFilePath
+          });
+          resolve(res.tempFilePath);
+        },
+        fail: (err) => {
+          console.log('图片压缩失败，使用原图:', err);
+          // 压缩失败时使用原图
+          resolve(tempFilePath);
+        }
+      });
+    });
+  },
+
+  /**
+   * 追加保存多张图片到本地存储（带压缩功能）
+   */
+  async unifiedSaveImagesToStorage(tempFilePaths, dataKey, isFirstLoad, oldImages = []) {
     const savedPaths = [];
     let savedCount = 0;
-    wx.showLoading({ title: '保存图片中...' });
+    wx.showLoading({ title: '压缩并保存图片中...' });
+    
     if (!tempFilePaths || tempFilePaths.length === 0) {
       wx.hideLoading();
       wx.showToast({ title: '未选择图片', icon: 'none' });
       return;
     }
+    
     const fs = wx.getFileSystemManager();
     
     // 只在更新模式下（oldImages为空）删除旧文件
@@ -166,40 +194,55 @@ Page({
       });
     }
 
-    tempFilePaths.forEach((tempPath, index) => {
-      fs.saveFile({
-        tempFilePath: tempPath,
-        success: (saveRes) => {
-          savedPaths.push(saveRes.savedFilePath);
-          savedCount++;
-          if (savedCount === tempFilePaths.length) {
-            const allImages = oldImages.concat(savedPaths);
-            wx.setStorageSync(`show${dataKey}`, allImages);
-            this.setData({ [dataKey]: allImages });
-            wx.hideLoading();
-            if (!isFirstLoad){
-              wx.showToast({ title: oldImages.length > 0 ? '图片追加成功' : '图片更新成功', icon: 'success' });
-            }
-          }
-        },
-        fail: (err) => {
-          savedCount++;
-          console.log(err.errMsg+'!!!');
-          if (savedCount === tempFilePaths.length) {
-            const allImages = oldImages.concat(savedPaths);
-            if (savedPaths.length > 0) { 
+    // 先压缩所有图片
+    try {
+      const compressedPaths = await Promise.all(
+        tempFilePaths.map(tempPath => this.compressImage(tempPath))
+      );
+      
+      // 保存压缩后的图片
+      compressedPaths.forEach((compressedPath, index) => {
+        fs.saveFile({
+          tempFilePath: compressedPath,
+          success: (saveRes) => {
+            savedPaths.push(saveRes.savedFilePath);
+            savedCount++;
+            if (savedCount === compressedPaths.length) {
+              const allImages = oldImages.concat(savedPaths);
               wx.setStorageSync(`show${dataKey}`, allImages);
               this.setData({ [dataKey]: allImages });
               wx.hideLoading();
-              wx.showToast({ title: '部分图片保存失败', icon: 'none' });
-            } else {
-              wx.hideLoading();
-              wx.showToast({ title: '保存图片失败', icon: 'error' });
+              if (!isFirstLoad) {
+                wx.showToast({ 
+                  title: oldImages.length > 0 ? '图片压缩并追加成功' : '图片压缩并更新成功', 
+                  icon: 'success' 
+                });
+              }
+            }
+          },
+          fail: (err) => {
+            savedCount++;
+            console.log('保存压缩图片失败:', err.errMsg);
+            if (savedCount === compressedPaths.length) {
+              const allImages = oldImages.concat(savedPaths);
+              if (savedPaths.length > 0) { 
+                wx.setStorageSync(`show${dataKey}`, allImages);
+                this.setData({ [dataKey]: allImages });
+                wx.hideLoading();
+                wx.showToast({ title: '部分图片保存失败', icon: 'none' });
+              } else {
+                wx.hideLoading();
+                wx.showToast({ title: '保存图片失败', icon: 'error' });
+              }
             }
           }
-        }
+        });
       });
-    });
+    } catch (error) {
+      console.error('图片压缩过程出错:', error);
+      wx.hideLoading();
+      wx.showToast({ title: '图片处理失败', icon: 'error' });
+    }
   },
   /*
     选择图片逻辑

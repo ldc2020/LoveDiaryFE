@@ -28,14 +28,14 @@
         <view class="section">
           <view class="section-title" bindtap="toggleCacheSection">
             <text class="expand-icon">{{showCacheSection ? '▼' : '▶'}}</text>
-            <text>缓存信息 (总大小: {{totalCacheSizeText}})</text>
+            <text>缓存信息 (总大小: {{totalCacheSizeText}}, 文件数: {{totalCacheCount}})</text>
           </view>
           <scroll-view class="cache-list" scroll-y="true" wx:if="{{showCacheSection}}">
             <view class="cache-item" wx:for="{{cacheInfo}}" wx:key="key" bindtap="toggleCacheDetail" data-index="{{index}}">
               <view class="cache-header">
                 <text class="cache-key">{{item.key}}</text>
                 <text class="cache-type type-{{item.type}}">{{item.type}}</text>
-                <text class="cache-size">{{item.size}}</text>
+                <text class="cache-size">{{item.size}} {{item.elementCount}}</text>
                 <text class="expand-icon">{{item.showDetail ? '▼' : '▶'}}</text>
               </view>
               <view class="cache-detail" wx:if="{{item.showDetail}}">
