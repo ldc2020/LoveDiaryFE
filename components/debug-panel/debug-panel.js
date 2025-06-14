@@ -6,14 +6,32 @@ Component({
     showPanel: false,
     showDebugBtn: false, // 控制调试按钮显示
     cacheInfo: [],
+    filteredCacheInfo: [], // 过滤后的缓存信息
+    cacheSearchKeyword: '', // 缓存搜索关键词
     fileStats: [],
     totalCacheSize: 0,
     totalCacheSizeText: '0 B',
     totalCacheCount: 0, // 缓存文件数统计
+    filteredCacheCount: 0, // 过滤后的缓存数量
     loading: false,
     fileDetails: {}, // 存储每种文件类型的详细文件列表
     showCacheSection: true, // 缓存信息折叠状态
-    showFileSection: true // 文件统计折叠状态
+    showFileSection: true, // 文件统计折叠状态
+    dbConfig: {
+      collectionNames: [
+        'ld_memo_plans',
+        'ld_exercise_plans',
+        'ld_travel_plans',
+        'ld_movie_plans',
+        'ld_cooking_plans',
+        'ld_shop_plans'
+      ],
+      permission: {
+        // 示例：所有人可读写
+        read: true,
+        write: true
+      }
+    }
   },
 
   lifetimes: {
@@ -69,7 +87,70 @@ Component({
      * 刷新调试信息
      */
     refreshInfo() {
+      // 清空搜索状态
+      this.setData({ 
+        cacheSearchKeyword: '',
+        filteredCacheInfo: [],
+        filteredCacheCount: 0
+      });
       this.loadDebugInfo();
+    },
+
+    /**
+     * 初始化数据库集合
+     * @description 调用云函数创建所有必需的数据库集合
+     */
+    async initDatabase() {
+      // 检查用户权限
+      const openid = wx.getStorageSync('openid');
+      const allowedOpenid = 'o1Yyl7U_-fotprl4226AULS1vvRw';
+      
+      if (openid !== allowedOpenid) {
+        wx.showToast({
+          title: '权限不足',
+          icon: 'error'
+        });
+        return;
+      }
+
+      // 显示加载提示
+      wx.showLoading({
+        title: '初始化数据库中...'
+      });
+
+      try {
+        console.log('开始调用initDatabase云函数');
+        
+        // 调用云函数初始化数据库
+        const { collectionNames } = this.data.dbConfig;
+        const result = await wx.cloud.callFunction({
+          name: 'initDatabase',
+          data: { collectionNames }
+        });
+
+        console.log('数据库初始化成功:', result);
+        
+        wx.hideLoading();
+        wx.showToast({
+          title: '数据库初始化成功',
+          icon: 'success',
+          duration: 2000
+        });
+
+        // 刷新调试信息
+        this.refreshInfo();
+        
+      } catch (error) {
+        console.error('数据库初始化失败:', error);
+        
+        wx.hideLoading();
+        wx.showModal({
+          title: '初始化失败',
+          content: `数据库初始化失败：${error.message || '未知错误'}\n\n请检查：\n1. 云函数是否已部署\n2. 云开发环境是否正常\n3. 网络连接是否正常`,
+          showCancel: false,
+          confirmText: '确定'
+        });
+      }
     },
 
     /**
@@ -135,11 +216,15 @@ Component({
           }
         }
         
+        const sortedCacheInfo = cacheInfo.sort((a, b) => this.parseSize(b.size) - this.parseSize(a.size));
+        
         this.setData({ 
           totalCacheSize: totalSize,
           totalCacheSizeText: this.formatSize(totalSize),
           totalCacheCount: cacheInfo.length,
-          cacheInfo: cacheInfo.sort((a, b) => this.parseSize(b.size) - this.parseSize(a.size))
+          cacheInfo: sortedCacheInfo,
+          filteredCacheInfo: sortedCacheInfo, // 初始时显示所有缓存
+          filteredCacheCount: cacheInfo.length
         });
         
         return cacheInfo;
@@ -516,17 +601,67 @@ Component({
     },
 
     /**
+     * 缓存搜索输入处理
+     * @param {Object} e 输入事件对象
+     */
+    onCacheSearchInput(e) {
+      const keyword = e.detail.value.trim();
+      this.setData({ cacheSearchKeyword: keyword });
+      this.filterCacheInfo(keyword);
+    },
+
+    /**
+     * 根据关键词过滤缓存信息
+     * @param {string} keyword 搜索关键词
+     */
+    filterCacheInfo(keyword) {
+      const { cacheInfo } = this.data;
+      
+      if (!keyword) {
+        // 如果没有关键词，显示所有缓存
+        this.setData({
+          filteredCacheInfo: cacheInfo,
+          filteredCacheCount: cacheInfo.length
+        });
+        return;
+      }
+      
+      // 使用前缀匹配过滤缓存
+      const filtered = cacheInfo.filter(item => {
+        return item.key.toLowerCase().startsWith(keyword.toLowerCase());
+      });
+      
+      this.setData({
+        filteredCacheInfo: filtered,
+        filteredCacheCount: filtered.length
+      });
+      
+      console.log(`[缓存搜索] 关键词: "${keyword}", 匹配结果: ${filtered.length}/${cacheInfo.length}`);
+    },
+
+    /**
+     * 清空搜索关键词
+     */
+    clearCacheSearch() {
+      this.setData({ 
+        cacheSearchKeyword: '',
+        filteredCacheInfo: this.data.cacheInfo,
+        filteredCacheCount: this.data.cacheInfo.length
+      });
+    },
+
+    /**
      * 切换缓存详情显示
      */
     toggleCacheDetail(e) {
       const index = e.currentTarget.dataset.index;
-      const cacheInfo = this.data.cacheInfo;
+      const filteredCacheInfo = this.data.filteredCacheInfo;
       
       // 更新showDetail状态
-      cacheInfo[index].showDetail = !cacheInfo[index].showDetail;
+      filteredCacheInfo[index].showDetail = !filteredCacheInfo[index].showDetail;
       
       this.setData({
-        cacheInfo: cacheInfo
+        filteredCacheInfo: filteredCacheInfo
       });
     },
 
@@ -988,6 +1123,18 @@ Component({
        } catch (error) {
          console.warn(`扫描目录失败: ${dirPath}`, error);
        }
-     }
-   }
- });
+     },
+
+    async setCollectionPermission() {
+      // ...权限校验...
+      const { collectionNames, permission } = this.data.dbConfig
+      for (const collectionName of collectionNames) {
+        await wx.cloud.callFunction({
+          name: 'setCollectionPermission',
+          data: { collectionName, rule: permission }
+        })
+      }
+      wx.showToast({ title: '权限修改完成', icon: 'success' })
+    }
+  }
+});

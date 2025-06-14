@@ -97,6 +97,24 @@
   gap: 20rpx;
 }
 
+.init-db-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f5f5f5;
+  font-size: 28rpx;
+  color: #ff9500;
+  transition: all 0.2s ease;
+}
+
+.init-db-btn:active {
+  background: #e0e0e0;
+  transform: scale(1.1);
+}
+
 .refresh-btn, .close-btn {
   width: 60rpx;
   height: 60rpx;
@@ -165,6 +183,106 @@
   font-size: 24rpx;
   color: #666;
   transition: transform 0.2s ease;
+}
+
+/* 缓存搜索容器 */
+.cache-search-container {
+  padding: 20rpx 30rpx;
+  background: #fafafa;
+  border-bottom: 1rpx solid #eee;
+  flex-shrink: 0;
+}
+
+/* 搜索输入框包装器 */
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 8rpx;
+  border: 1rpx solid #ddd;
+  padding: 0 20rpx;
+  transition: border-color 0.2s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #007aff;
+  box-shadow: 0 0 0 2rpx rgba(0, 122, 255, 0.1);
+}
+
+/* 搜索输入框 */
+.cache-search-input {
+  flex: 1;
+  height: 60rpx;
+  font-size: 28rpx;
+  color: #333;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+/* 搜索占位符样式 */
+.search-placeholder {
+  color: #999;
+  font-size: 26rpx;
+}
+
+/* 清空搜索按钮 */
+.clear-search-btn {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #666;
+  font-size: 24rpx;
+  margin-left: 10rpx;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.clear-search-btn:active {
+  background: #e0e0e0;
+  transform: scale(0.95);
+}
+
+/* 搜索结果信息 */
+.search-result-info {
+  margin-top: 15rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.result-count {
+  font-size: 24rpx;
+  color: #666;
+  background: #e8f4fd;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid #b3d9ff;
+}
+
+/* 无搜索结果提示 */
+.no-results {
+  padding: 60rpx 30rpx;
+  text-align: center;
+  background: #fafafa;
+}
+
+.no-results-text {
+  display: block;
+  font-size: 28rpx;
+  color: #999;
+  margin-bottom: 10rpx;
+}
+
+.no-results-tip {
+  display: block;
+  font-size: 24rpx;
+  color: #ccc;
 }
 
 /* 缓存列表 */
@@ -406,4 +524,23 @@
   padding: 2rpx 6rpx;
   border-radius: 3rpx;
   border: 1rpx solid #e0e8f0;
+}
+
+.perm-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f5f5f5;
+  font-size: 28rpx;
+  color: #1976d2;
+  transition: all 0.2s ease;
+  margin-left: 10rpx;
+}
+
+.perm-btn:active {
+  background: #e0e0e0;
+  transform: scale(1.1);
 }

@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "情侣计划",
+  "navigationBarBackgroundColor": "#667eea",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#667eea",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 50,
+  "usingComponents": {
+    "debug-panel": "/components/debug-panel/debug-panel"
+  }
+}

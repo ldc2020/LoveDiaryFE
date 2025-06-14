@@ -1,0 +1,334 @@
+<!--情侣计划页面模板-->
+<view class="plan-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">情侣计划</text>
+    <view class="smart-input-btn" bindtap="showSmartInput">
+      <text class="iconfont icon-add"></text>
+      <text>智能添加</text>
+    </view>
+  </view>
+
+  <!-- 移除标签页导航，改为卡片式布局 -->
+
+  <!-- 计划卡片网格布局 -->
+  <scroll-view class="plan-content" scroll-y="true" enhanced="true">
+    <view class="plan-cards-grid">
+      
+      <!-- 电影计划卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="movie">
+        <view class="card-icon">🎬</view>
+        <view class="card-content">
+          <text class="card-title">电影计划</text>
+          <text class="card-count">{{planCounts.movie}}</text>
+        </view>
+      </view>
+
+      <!-- 烹饪计划卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="cooking">
+        <view class="card-icon">🍳</view>
+        <view class="card-content">
+          <text class="card-title">烹饪计划</text>
+          <text class="card-count">{{planCounts.cooking}}</text>
+        </view>
+      </view>
+
+      <!-- 运动打卡卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="exercise">
+        <view class="card-icon">💪</view>
+        <view class="card-content">
+          <text class="card-title">运动打卡</text>
+          <text class="card-count">{{planCounts.exercise}}</text>
+        </view>
+      </view>
+
+      <!-- 旅游计划卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="travel">
+        <view class="card-icon">✈️</view>
+        <view class="card-content">
+          <text class="card-title">旅游计划</text>
+          <text class="card-count">{{planCounts.travel}}</text>
+        </view>
+      </view>
+
+      <!-- 探店计划卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="shop">
+        <view class="card-icon">🏪</view>
+        <view class="card-content">
+          <text class="card-title">探店计划</text>
+          <text class="card-count">{{planCounts.shop}}</text>
+        </view>
+      </view>
+      
+      <!-- 临时备忘卡片 -->
+      <view class="plan-card" bindtap="navigateToPlanDetail" data-type="memo">
+        <view class="card-icon">📝</view>
+        <view class="card-content">
+          <text class="card-title">临时备忘</text>
+          <text class="card-count">{{planCounts.memo}}</text>
+        </view>
+      </view>
+      
+    </view>
+
+  </scroll-view>
+
+  <!-- 智能输入弹窗 -->
+  <view class="modal-overlay" wx:if="{{showInputModal}}" bindtap="hideInputModal">
+    <view class="input-modal" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">智能添加计划</text>
+        <view class="modal-close" bindtap="hideInputModal">
+          <text class="iconfont icon-close"></text>
+        </view>
+      </view>
+      
+      <view class="modal-content" catchtap="stopPropagation">
+        <view class="input-tip">
+          <text>请输入或粘贴计划内容，系统将自动识别并归类：</text>
+        </view>
+        
+        <textarea 
+          class="smart-input" 
+          placeholder="例如：\n• 看电影《阿凡达》，导演詹姆斯·卡梅隆\n• 做红烧肉，需要五花肉500g，生抽2勺\n• 减肥到55kg\n• 去北京旅游，参观故宫和长城\n• 探店：三里屯的网红咖啡厅"
+          value="{{inputText}}"
+          bindinput="onInputChange"
+          catchtap="stopPropagation"
+          maxlength="1000"
+          auto-height
+        ></textarea>
+        
+        <view class="input-actions">
+          <button class="cancel-btn" bindtap="hideInputModal">取消</button>
+          <button class="confirm-btn" bindtap="analyzeInputText" loading="{{isAnalyzing}}">
+            {{isAnalyzing ? '分析中...' : '智能识别'}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 计划详情弹窗 -->
+  <view class="modal-overlay" wx:if="{{showDetailModal}}" bindtap="hidePlanDetail">
+    <view class="detail-modal" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">计划详情</text>
+        <view class="modal-close" bindtap="hidePlanDetail">
+          <text class="iconfont icon-close"></text>
+        </view>
+      </view>
+      
+      <view class="modal-content" wx:if="{{currentPlanDetail}}" catchtap="stopPropagation">
+        
+        <!-- 电影计划详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'movie'}}">
+          <view class="detail-item">
+            <text class="detail-label">电影名称：</text>
+            <text class="detail-value">{{currentPlanDetail.movieName}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">电影信息：</text>
+            <text class="detail-value">{{currentPlanDetail.movieInfo}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">观看状态：</text>
+            <text class="detail-value">{{currentPlanDetail.watched ? '已观看' : '未观看'}}</text>
+          </view>
+        </view>
+        
+        <!-- 烹饪计划详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'cooking'}}">
+          <view class="detail-item">
+            <text class="detail-label">食材：</text>
+            <text class="detail-value">{{currentPlanDetail.ingredients.join(', ')}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">用量：</text>
+            <text class="detail-value">{{currentPlanDetail.portions.join(', ')}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">尝试状态：</text>
+            <text class="detail-value">{{currentPlanDetail.tried ? '已尝试' : '未尝试'}}</text>
+          </view>
+          <view class="detail-item" wx:if="{{currentPlanDetail.rating > 0}}">
+            <text class="detail-label">评分：</text>
+            <text class="detail-value">{{currentPlanDetail.rating}}/5</text>
+          </view>
+        </view>
+        
+        <!-- 运动计划详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'exercise'}}">
+          <view class="detail-item">
+            <text class="detail-label">目标体重：</text>
+            <text class="detail-value">{{currentPlanDetail.targetWeight}}kg</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">当前体重：</text>
+            <text class="detail-value">{{currentPlanDetail.currentWeight || '未记录'}}kg</text>
+          </view>
+        </view>
+        
+        <!-- 旅游计划详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'travel'}}">
+          <view class="detail-item">
+            <text class="detail-label">行程：</text>
+            <text class="detail-value">{{currentPlanDetail.itinerary}}</text>
+          </view>
+          <view class="detail-item" wx:if="{{currentPlanDetail.travelDate}}">
+            <text class="detail-label">计划日期：</text>
+            <text class="detail-value">{{currentPlanDetail.travelDate}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">游玩状态：</text>
+            <text class="detail-value">{{currentPlanDetail.visited ? '已去过' : '未去过'}}</text>
+          </view>
+        </view>
+        
+        <!-- 探店计划详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'shop'}}">
+          <view class="detail-item">
+            <text class="detail-label">店铺名称：</text>
+            <text class="detail-value">{{currentPlanDetail.shopName}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">地区：</text>
+            <text class="detail-value">{{currentPlanDetail.region}}</text>
+          </view>
+          <view class="detail-item">
+            <text class="detail-label">探店状态：</text>
+            <text class="detail-value">{{currentPlanDetail.visited ? '已探店' : '未探店'}}</text>
+          </view>
+        </view>
+        
+        <!-- 备忘录详情 -->
+        <view wx:if="{{currentPlanDetail.type === 'memo'}}">
+          <view class="detail-item">
+            <text class="detail-label">备忘内容：</text>
+            <text class="detail-value">{{currentPlanDetail.memo}}</text>
+          </view>
+        </view>
+        
+        <!-- 通用信息 -->
+        <view class="detail-item">
+          <text class="detail-label">创建时间：</text>
+          <text class="detail-value">{{currentPlanDetail.createTime}}</text>
+        </view>
+        
+        <view class="detail-item">
+          <text class="detail-label">原始文本：</text>
+          <text class="detail-value original-text">{{currentPlanDetail.originalText}}</text>
+        </view>
+        
+        <!-- 操作按钮 -->
+        <view class="detail-actions">
+          <button class="action-btn status-btn" 
+                  bindtap="togglePlanStatus"
+                  data-plan="{{currentPlanDetail}}" 
+                  data-type="{{currentPlanDetail.type}}">
+            {{currentPlanDetail.status === 'completed' ? '标记未完成' : '标记完成'}}
+          </button>
+          <button class="action-btn delete-btn" 
+                  bindtap="deletePlan"
+                  data-planid="{{currentPlanDetail._id}}" 
+                  data-type="{{currentPlanDetail.type}}">
+            删除计划
+          </button>
+          <button class="action-btn edit-btn"
+                  bindtap="showEditDetailModal">
+            修改详情
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 编辑详情弹窗 -->
+  <view class="modal-overlay" wx:if="{{showEditDetailModal}}" bindtap="hideEditDetailModal">
+    <view class="input-modal" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">编辑计划详情</text>
+        <view class="modal-close" bindtap="hideEditDetailModal">
+          <text class="iconfont icon-close"></text>
+        </view>
+      </view>
+      <view class="modal-content">
+        <!-- 只展示可编辑字段，举例：memo、movieName、itinerary等 -->
+        <view wx:if="{{editDetail.type === 'memo'}}">
+          <textarea class="smart-input" value="{{editDetail.memo}}" data-field="memo" bindinput="onEditDetailInput"></textarea>
+        </view>
+        <view wx:if="{{editDetail.type === 'movie'}}">
+          <input class="smart-input" value="{{editDetail.movieName}}" data-field="movieName" bindinput="onEditDetailInput" />
+          <textarea class="smart-input" value="{{editDetail.movieInfo}}" data-field="movieInfo" bindinput="onEditDetailInput"></textarea>
+        </view>
+        <view wx:if="{{editDetail.type === 'travel'}}">
+          <textarea class="smart-input" value="{{editDetail.itinerary}}" data-field="itinerary" bindinput="onEditDetailInput"></textarea>
+          <input class="smart-input" value="{{editDetail.travelDate}}" data-field="travelDate" bindinput="onEditDetailInput" />
+        </view>
+        <!-- 其他类型可按需补充 -->
+        <view class="input-actions">
+          <button class="cancel-btn" bindtap="hideEditDetailModal">取消</button>
+          <button class="confirm-btn" bindtap="saveEditDetail">保存</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 手动添加电影弹窗 -->
+  <view class="modal-overlay" wx:if="{{showManualAddModal}}" bindtap="hideManualAdd">
+    <view class="input-modal" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">添加电影计划</text>
+        <view class="modal-close" bindtap="hideManualAdd">
+          <text class="iconfont icon-close"></text>
+        </view>
+      </view>
+      
+      <view class="modal-content" catchtap="stopPropagation">
+        <view class="input-tip">
+          <text>请输入电影名称，系统将自动搜索电影信息：</text>
+        </view>
+        
+        <input 
+          class="movie-input" 
+          placeholder="请输入电影名称"
+          value="{{movieName}}"
+          bindinput="onMovieNameInput"
+          catchtap="stopPropagation"
+        ></input>
+
+        <view class="movie-info" wx:if="{{movieInfo}}">
+          <view class="info-item">
+            <text class="info-label">电影名称：</text>
+            <text class="info-value">{{movieInfo.title}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">导演：</text>
+            <text class="info-value">{{movieInfo.director}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">主演：</text>
+            <text class="info-value">{{movieInfo.actors}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">简介：</text>
+            <text class="info-value">{{movieInfo.summary}}</text>
+          </view>
+        </view>
+        
+        <view class="input-actions">
+          <button class="cancel-btn" bindtap="hideManualAdd">取消</button>
+          <button class="search-btn" bindtap="searchMovie" loading="{{isSearching}}" wx:if="{{!movieInfo}}">
+            搜索电影
+          </button>
+          <button class="confirm-btn" bindtap="addMoviePlan" loading="{{isAdding}}" wx:if="{{movieInfo}}">
+            添加计划
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 调试面板 -->
+  <debug-panel></debug-panel>
+
+</view>

@@ -1,0 +1,555 @@
+/* 情侣计划页面样式 */
+.plan-container {
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10rpx);
+}
+
+.page-title {
+  font-size: 36rpx; /* 🎯 页面标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: white;
+}
+
+.smart-input-btn {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 20rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 25rpx;
+  color: white;
+  font-size: 28rpx; /* 🎯 智能输入按钮字体大小 - 可调整 */
+}
+
+.smart-input-btn .iconfont {
+  margin-right: 8rpx;
+  font-size: 24rpx;
+}
+
+/* 移除标签页导航样式，改为卡片网格布局 */
+
+/* 计划内容区域 */
+.plan-content {
+  flex: 1;
+  padding: 40rpx 30rpx;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+/* 卡片网格布局 */
+.plan-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30rpx;
+  justify-items: center;
+}
+
+/* 计划卡片样式 */
+.plan-card {
+  width: 100%;
+  max-width: 300rpx;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20rpx);
+  border-radius: 20rpx;
+  padding: 30rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+}
+
+.plan-card:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.card-icon {
+  font-size: 60rpx;
+  margin-bottom: 20rpx;
+  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.2));
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.card-title {
+  font-size: 28rpx; /* 🎯 计划卡片标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: white;
+  margin-bottom: 8rpx;
+}
+
+.card-count {
+  font-size: 24rpx; /* 🎯 计划卡片数量字体大小 - 可调整 */
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.2);
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  font-weight: bold;
+  border: 1rpx solid rgba(255, 107, 107, 0.3);
+}
+
+/* 计划分组 */
+.plan-section {
+  margin-bottom: 20rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding: 0 10rpx;
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.section-title {
+  font-size: 32rpx; /* 🎯 分组标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: white;
+}
+
+.section-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6rpx 12rpx;
+  border-radius: 15rpx;
+  font-size: 24rpx; /* 🎯 分组数量字体大小 - 可调整 */
+}
+
+/* 计划列表 */
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15rpx;
+}
+
+.plan-item {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20rpx;
+  padding: 25rpx;
+  box-shadow: 0 8rpx 25rpx rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plan-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15);
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15rpx;
+}
+
+.plan-title {
+  font-size: 32rpx; /* 🎯 计划项标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: #333;
+  flex: 1;
+}
+
+.plan-status {
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx; /* 🎯 计划状态标签字体大小 - 可调整 */
+  color: white;
+}
+
+.plan-status.completed {
+  background: #4CAF50;
+}
+
+.plan-status.pending {
+  background: #FF9800;
+}
+
+.plan-content-preview {
+  margin-bottom: 15rpx;
+}
+
+.plan-preview {
+  font-size: 28rpx; /* 🎯 计划预览内容字体大小 - 可调整 */
+  color: #666;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.plan-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.plan-time {
+  flex: 1;
+}
+
+.plan-rating {
+  color: #FF9800;
+  font-weight: bold;
+}
+
+.plan-date {
+  color: #2196F3;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 40rpx 20rpx;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 28rpx;
+}
+
+/* 弹窗遮罩 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* 输入弹窗 */
+.input-modal {
+  width: 90%;
+  max-width: 600rpx;
+  background: white;
+  border-radius: 20rpx;
+  overflow: hidden;
+  position: relative;
+  z-index: 1001;
+}
+
+/* 详情弹窗 */
+.detail-modal {
+  width: 90%;
+  max-width: 600rpx;
+  max-height: 80%;
+  background: white;
+  border-radius: 20rpx;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(50rpx) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 弹窗头部 */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  padding: 10rpx;
+}
+
+/* 弹窗内容 */
+.modal-content {
+  padding: 30rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.input-tip {
+  margin-bottom: 20rpx;
+  color: #666;
+  font-size: 28rpx;
+}
+
+.smart-input {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  margin-bottom: 30rpx;
+  box-sizing: border-box;
+}
+
+.smart-input:focus {
+  border-color: #667eea;
+  background: white;
+}
+
+/* 输入操作按钮 */
+.input-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20rpx;
+}
+
+.cancel-btn, .confirm-btn {
+  padding: 15rpx 40rpx;
+  border-radius: 30rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.confirm-btn {
+  background: #667eea;
+  color: white;
+}
+
+.confirm-btn[loading] {
+  opacity: 0.7;
+}
+
+/* 详情项 */
+.detail-item {
+  margin-bottom: 25rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.detail-label {
+  display: block;
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.detail-value {
+  font-size: 30rpx;
+  color: #333;
+  line-height: 1.4;
+}
+
+.original-text {
+  background: #f8f9fa;
+  padding: 15rpx;
+  border-radius: 10rpx;
+  font-style: italic;
+  color: #666;
+}
+
+/* 详情操作按钮 */
+.detail-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 30rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 20rpx;
+  border: none;
+  border-radius: 15rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+.status-btn {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+  color: white;
+  margin-left: 20rpx;
+}
+
+/* 响应式适配 */
+@media (max-width: 750rpx) {
+  .page-header {
+    padding: 15rpx 20rpx;
+  }
+  
+  .page-title {
+    font-size: 32rpx;
+  }
+  
+  .smart-input-btn {
+    padding: 10rpx 16rpx;
+    font-size: 26rpx;
+  }
+  
+  .tab-item {
+    padding: 16rpx 24rpx;
+    font-size: 26rpx;
+  }
+  
+  .plan-content {
+    padding: 15rpx;
+  }
+  
+  .plan-item {
+    padding: 20rpx;
+  }
+  
+  .plan-title {
+    font-size: 30rpx;
+  }
+  
+  .modal-content {
+    padding: 20rpx;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6rpx;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3rpx;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3rpx;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.add-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.add-icon:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.add-icon .icon-add {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 删除旧的手动添加按钮样式 */
+.header-buttons,
+.manual-add-btn {
+  display: none;
+}
+
+.movie-input {
+  width: 100%;
+  height: 80rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  margin-bottom: 32rpx;
+  font-size: 28rpx;
+}
+
+.movie-info {
+  background: #f8f9fa;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
+}
+
+.info-item {
+  margin-bottom: 16rpx;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  color: #666;
+  font-size: 26rpx;
+  margin-right: 16rpx;
+}
+
+.info-value {
+  color: #333;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  padding: 20rpx 40rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+}

@@ -12,6 +12,8 @@
       <view class="panel-header">
         <text class="panel-title">调试信息面板</text>
         <view class="header-actions">
+          <text class="init-db-btn" bindtap="initDatabase">🗄️</text>
+          <text class="perm-btn" bindtap="setCollectionPermission">🔑</text>
           <text class="refresh-btn" bindtap="refreshInfo">🔄</text>
           <text class="close-btn" bindtap="closePanel">×</text>
         </view>
@@ -30,8 +32,26 @@
             <text class="expand-icon">{{showCacheSection ? '▼' : '▶'}}</text>
             <text>缓存信息 (总大小: {{totalCacheSizeText}}, 文件数: {{totalCacheCount}})</text>
           </view>
+          
+          <!-- 缓存搜索框 -->
+          <view class="cache-search-container" wx:if="{{showCacheSection}}">
+            <view class="search-input-wrapper">
+              <input 
+                class="cache-search-input" 
+                placeholder="输入缓存key前缀进行搜索..." 
+                value="{{cacheSearchKeyword}}"
+                bindinput="onCacheSearchInput"
+                placeholder-class="search-placeholder"
+              />
+              <text class="clear-search-btn" wx:if="{{cacheSearchKeyword}}" bindtap="clearCacheSearch">×</text>
+            </view>
+            <view class="search-result-info" wx:if="{{cacheSearchKeyword}}">
+              <text class="result-count">找到 {{filteredCacheCount}} / {{totalCacheCount}} 个缓存</text>
+            </view>
+          </view>
+          
           <scroll-view class="cache-list" scroll-y="true" wx:if="{{showCacheSection}}">
-            <view class="cache-item" wx:for="{{cacheInfo}}" wx:key="key" bindtap="toggleCacheDetail" data-index="{{index}}">
+            <view class="cache-item" wx:for="{{filteredCacheInfo}}" wx:key="key" bindtap="toggleCacheDetail" data-index="{{index}}">
               <view class="cache-header">
                 <text class="cache-key">{{item.key}}</text>
                 <text class="cache-type type-{{item.type}}">{{item.type}}</text>
@@ -42,6 +62,12 @@
                 <text class="detail-label">值：</text>
                 <text class="detail-value">{{item.value}}</text>
               </view>
+            </view>
+            
+            <!-- 无搜索结果提示 -->
+            <view class="no-results" wx:if="{{cacheSearchKeyword && filteredCacheCount === 0}}">
+              <text class="no-results-text">未找到匹配 "{{cacheSearchKeyword}}" 的缓存</text>
+              <text class="no-results-tip">请尝试其他关键词或清空搜索</text>
             </view>
           </scroll-view>
         </view>

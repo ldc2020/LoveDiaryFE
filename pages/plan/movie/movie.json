@@ -1,0 +1,11 @@
+{
+  "usingComponents": {
+    "debug-panel": "/components/debug-panel/debug-panel"
+  },
+  "navigationBarTitleText": "电影计划",
+  "navigationStyle": "custom",
+  "backgroundColor": "#667eea",
+  "backgroundTextStyle": "light",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 50
+}

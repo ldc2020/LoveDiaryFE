@@ -1,0 +1,656 @@
+/* pages/plan/movie/movie.wxss */
+.movie-container {
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 页面头部 - 调整高度避免内容被遮挡 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 100rpx 30rpx;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10rpx);
+}
+
+.header-left, .header-right {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 32rpx;
+}
+
+.page-title {
+  font-size: 36rpx; /* 🎯 页面标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: white;
+}
+
+/* 电影内容区域 - 调整padding确保内容可见 */
+.movie-content {
+  flex: 1;
+  padding: 20rpx 25rpx; /* 减少padding */
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.movie-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.movie-item {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20rpx);
+  border-radius: 16rpx;
+  padding: 20rpx 25rpx; /* 减少垂直内边距，让列表项更扁 */
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.movie-item:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.movie-content-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.movie-main-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.movie-title {
+  font-size: 30rpx; /* 🎯 电影标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: white;
+  line-height: 1.2;
+}
+
+.movie-sub-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+
+.movie-release-time {
+  font-size: 24rpx; /* 🎯 电影上映时间字体大小 - 可调整 */
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.2;
+}
+
+.movie-rating {
+  font-size: 22rpx; /* 🎯 电影评分字体大小 - 可调整 */
+  color: #FFD700;
+  background: rgba(255, 215, 0, 0.15);
+  padding: 4rpx 8rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid rgba(255, 215, 0, 0.3);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.movie-status {
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx; /* 🎯 电影状态标签字体大小 - 可调整 */
+  font-weight: bold;
+}
+
+.movie-status.watched {
+  background: rgba(76, 175, 80, 0.3);
+  color: #4CAF50;
+  border: 1rpx solid rgba(76, 175, 80, 0.5);
+}
+
+.movie-status.unwatched {
+  background: rgba(255, 152, 0, 0.3);
+  color: #FF9800;
+  border: 1rpx solid rgba(255, 152, 0, 0.5);
+}
+
+.movie-info {
+  margin-bottom: 20rpx;
+}
+
+.movie-preview {
+  font-size: 28rpx; /* 🎯 电影简介字体大小 - 可调整 */
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+}
+
+.movie-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15rpx;
+}
+
+.movie-time {
+  font-size: 24rpx; /* 🎯 电影创建时间字体大小 - 可调整 */
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 电影详情弹窗样式 */
+.detail-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10rpx);
+}
+
+.detail-modal-content {
+  width: 95%;
+  max-width: 750rpx;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(50rpx) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.detail-title {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.detail-close {
+  font-size: 40rpx;
+  font-weight: bold;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.detail-close:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.9);
+}
+
+.detail-body {
+  padding: 30rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.detail-poster-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30rpx;
+  padding: 20rpx;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12rpx;
+}
+
+.detail-poster-image {
+  width: 360rpx;
+  height: 480rpx;
+  border-radius: 12rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+}
+
+.detail-item {
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: flex-start;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 28rpx;
+  color: #666;
+  font-weight: 500;
+  min-width: 160rpx;
+  margin-right: 20rpx;
+}
+
+.detail-value {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+  line-height: 1.5;
+}
+
+.detail-summary {
+  line-height: 1.6;
+}
+
+.detail-rating {
+  color: #FF6B35;
+  font-weight: 600;
+  background: rgba(255, 107, 53, 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid rgba(255, 107, 53, 0.2);
+  display: inline-block;
+}
+
+.status-watched {
+  color: #4CAF50;
+  font-weight: 500;
+}
+
+.status-unwatched {
+  color: #FF9800;
+  font-weight: 500;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 15rpx;
+  padding: 30rpx;
+  background: rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+}
+
+.detail-btn {
+  flex: 1;
+  min-width: 160rpx; /* 增加最小宽度防止换行 */
+  height: 88rpx; /* 增加高度适应更大字体 */
+  border-radius: 16rpx;
+  font-size: 26rpx; /* 🎯 电影详情按钮字体大小 - 可调整 (从20rpx增加到26rpx) */
+  font-weight: 500;
+  border: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap; /* 防止文字换行 */
+}
+
+.detail-btn.secondary {
+  background: rgba(0, 0, 0, 0.1);
+  color: #666;
+}
+
+.detail-btn.secondary:active {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.detail-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.detail-btn.primary:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.detail-btn.danger {
+  background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+  color: white;
+  box-shadow: 0 4rpx 12rpx rgba(255, 71, 87, 0.3);
+}
+
+.detail-btn.danger:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+  box-shadow: 0 2rpx 8rpx rgba(255, 71, 87, 0.4);
+}
+
+.detail-btn.danger[loading] {
+  background: #ccc;
+  color: #999;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.detail-btn.danger[loading]:active {
+  transform: none;
+  opacity: 1;
+}
+
+/* 悬浮添加按钮 */
+.floating-add-btn {
+  position: fixed;
+  bottom: 120rpx;
+  right: 40rpx;
+  width: 120rpx;
+  height: 120rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.4);
+  z-index: 999;
+  transition: all 0.3s ease;
+}
+
+.floating-add-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.6);
+}
+
+.floating-add-btn .add-icon {
+  font-size: 48rpx;
+  color: white;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 40rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 30rpx;
+  opacity: 0.6;
+}
+
+.empty-text {
+  font-size: 32rpx; /* 🎯 空状态主文字字体大小 - 可调整 */
+  color: white;
+  font-weight: bold;
+  margin-bottom: 16rpx;
+}
+
+.empty-tip {
+  font-size: 28rpx; /* 🎯 空状态提示文字字体大小 - 可调整 */
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.add-modal {
+  width: 90%;
+  max-width: 600rpx;
+  background: white;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.add-modal-wide {
+  width: 95%;
+  max-width: 750rpx;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  background: #f8f9fa;
+  border-bottom: 1rpx solid #e9ecef;
+}
+
+.modal-title {
+  font-size: 32rpx; /* 🎯 弹窗标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  width: 50rpx;
+  height: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: #666;
+  font-size: 28rpx;
+}
+
+.close-icon {
+  font-size: 32rpx;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.modal-content {
+  padding: 30rpx;
+}
+
+.search-section {
+  margin-bottom: 30rpx;
+}
+
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 25rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #e9ecef;
+}
+
+.search-input {
+  flex: 1;
+  padding: 20rpx 0;
+  font-size: 28rpx; /* 🎯 搜索输入框字体大小 - 可调整 */
+  background: transparent;
+}
+
+.search-btn {
+  min-width: 120rpx;
+  height: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #667eea;
+  color: white;
+  font-size: 28rpx;
+  border-radius: 25rpx;
+  padding: 0 15rpx;
+  box-shadow: 0 2rpx 8rpx rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.search-btn:active {
+  background: #5a6fd8;
+  transform: scale(0.95);
+}
+
+.search-icon {
+  font-size: 24rpx;
+  line-height: 1;
+  margin-right: 8rpx;
+}
+
+.search-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* 搜索按钮加载状态 */
+.search-btn.searching {
+  background: #a0a0a0;
+  cursor: not-allowed;
+  box-shadow: 0 2rpx 8rpx rgba(160, 160, 160, 0.3);
+}
+
+.search-btn.searching:active {
+  background: #a0a0a0;
+  transform: none;
+}
+
+.search-loading {
+  font-size: 24rpx;
+  line-height: 1;
+  margin-right: 8rpx;
+  animation: rotate 1s linear infinite;
+}
+
+/* 搜索加载提示 */
+.search-loading-tip {
+  margin-top: 20rpx;
+  padding: 15rpx 20rpx;
+  background: #f0f8ff;
+  border-radius: 10rpx;
+  border-left: 4rpx solid #667eea;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #667eea;
+  line-height: 1.4;
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.movie-result {
+  background: #f8f9fa;
+  border-radius: 15rpx;
+  padding: 25rpx;
+  margin-bottom: 30rpx;
+}
+
+.result-content {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 15rpx;
+}
+
+.result-poster {
+  flex-shrink: 0;
+  width: 225rpx;
+  height: 300rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background: #e9ecef;
+}
+
+.poster-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 8rpx;
+}
+
+.result-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.result-title {
+  font-size: 30rpx; /* 🎯 搜索结果标题字体大小 - 可调整 */
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15rpx;
+}
+
+.result-info {
+  font-size: 26rpx; /* 🎯 搜索结果信息字体大小 - 可调整 */
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.result-summary {
+  font-size: 24rpx; /* 🎯 搜索结果简介字体大小 - 可调整 */
+  color: #888;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.cancel-btn, .confirm-btn {
+  flex: 1;
+  padding: 20rpx;
+  border-radius: 25rpx;
+  font-size: 28rpx; /* 🎯 弹窗按钮字体大小 - 可调整 */
+  font-weight: bold;
+  border: none;
+}
+
+.cancel-btn {
+  background: #e9ecef;
+  color: #666;
+}
+
+.confirm-btn {
+  background: #667eea;
+  color: white;
+}
+
+.confirm-btn[disabled] {
+  background: #ccc;
+  color: #999;
+}

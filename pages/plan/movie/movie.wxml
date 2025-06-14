@@ -1,0 +1,172 @@
+<!--pages/plan/movie/movie.wxml-->
+<view class="movie-container">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <view class="header-left" bindtap="goBack">
+      <text class="iconfont icon-back"></text>
+    </view>
+    <text class="page-title">电影计划</text>
+    <view class="header-right">
+      <!-- 移除原有的添加按钮 -->
+    </view>
+  </view>
+
+  <!-- 电影列表 -->
+  <scroll-view class="movie-content" scroll-y="true" enhanced="true">
+    <view class="movie-list">
+      <view class="movie-item" wx:for="{{moviePlans}}" wx:key="_id" 
+            bindtap="showMovieDetail" data-plan="{{item}}">
+        <view class="movie-content-row">
+          <view class="movie-main-info">
+            <text class="movie-title">{{item.movieName}}</text>
+            <view class="movie-sub-info">
+              <text class="movie-release-time">{{item.releaseTime || '上映时间未知'}}</text>
+              <text class="movie-rating" wx:if="{{item.rating}}">⭐ {{item.rating}}</text>
+            </view>
+          </view>
+          <view class="movie-status {{item.watched ? 'watched' : 'unwatched'}}">
+            <text>{{item.watched ? '已看' : '未看'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <view class="empty-state" wx:if="{{moviePlans.length === 0}}">
+      <text class="empty-icon">🎬</text>
+      <text class="empty-text">暂无电影计划</text>
+      <text class="empty-tip">点击右下角添加新的电影计划</text>
+    </view>
+  </scroll-view>
+
+  <!-- 添加电影弹窗 -->
+  <view class="modal-overlay" wx:if="{{showAddModal}}" bindtap="hideAddModal">
+    <view class="add-modal add-modal-wide" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">添加电影计划</text>
+        <view class="modal-close" bindtap="hideAddModal">
+          <text class="close-icon">×</text>
+        </view>
+      </view>
+      
+      <view class="modal-content">
+        <view class="search-section">
+          <view class="search-input-wrap">
+            <input 
+              class="search-input" 
+              placeholder="请输入电影名称搜索"
+              value="{{searchKeyword}}"
+              bindinput="onSearchInput"
+              bindconfirm="searchMovie"
+              disabled="{{isSearching}}"
+            />
+            <view class="search-btn {{isSearching ? 'searching' : ''}}" bindtap="searchMovie">
+              <text class="search-icon" wx:if="{{!isSearching}}">🔍</text>
+              <text class="search-loading" wx:if="{{isSearching}}">⏳</text>
+              <text class="search-text">{{isSearching ? '搜索中...' : '搜索'}}</text>
+            </view>
+          </view>
+          
+          <!-- 搜索加载提示 -->
+          <view class="search-loading-tip" wx:if="{{isSearching}}">
+            <text class="loading-text">正在搜索电影信息，请稍候...</text>
+          </view>
+        </view>
+        
+        <view class="movie-result" wx:if="{{movieInfo}}">
+          <view class="result-content">
+            <view class="result-poster" wx:if="{{movieInfo.poster}}">
+              <image class="poster-image" src="{{movieInfo.poster}}" mode="aspectFit" lazy-load="true" />
+            </view>
+            <view class="result-details">
+              <view class="result-title">{{movieInfo.title}}</view>
+              <view class="result-info">导演：{{movieInfo.director}}</view>
+              <view class="result-info">主演：{{movieInfo.actors}}</view>
+              <view class="result-info">上映时间：{{movieInfo.year}}</view>
+              <view class="result-info">类型：{{movieInfo.genre}}</view>
+              <view class="result-info">评分：{{movieInfo.rating}}</view>
+              <view class="result-info">时长：{{movieInfo.duration}}</view>
+            </view>
+          </view>
+          <view class="result-summary">{{movieInfo.plot}}</view>
+        </view>
+        
+        <view class="modal-actions">
+          <button class="cancel-btn" bindtap="hideAddModal">取消</button>
+          <button class="confirm-btn" bindtap="addMoviePlan" disabled="{{!movieInfo || isAdding}}" loading="{{isAdding}}">{{isAdding ? '添加中...' : '添加'}}</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+
+  <!-- 电影详情弹窗 -->
+  <view class="detail-modal" wx:if="{{showDetailModal}}" bindtap="hideDetailModal">
+    <view class="detail-modal-content" catchtap="stopPropagation">
+      <view class="detail-header">
+        <text class="detail-title">电影详情</text>
+        <text class="detail-close" bindtap="hideDetailModal">×</text>
+      </view>
+      <view class="detail-body" wx:if="{{selectedMovie}}">
+        <view class="detail-poster-section" wx:if="{{selectedMovie.poster}}">
+          <image class="detail-poster-image" src="{{selectedMovie.poster}}" mode="aspectFit" lazy-load="true" />
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">电影名称：</text>
+          <text class="detail-value">{{selectedMovie.movieName}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.releaseTime}}">
+          <text class="detail-label">上映时间：</text>
+          <text class="detail-value">{{selectedMovie.releaseTime}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.rating}}">
+          <text class="detail-label">评分：</text>
+          <text class="detail-value detail-rating">{{selectedMovie.rating}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.duration}}">
+          <text class="detail-label">时长：</text>
+          <text class="detail-value">{{selectedMovie.duration}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.genre}}">
+          <text class="detail-label">类型：</text>
+          <text class="detail-value">{{selectedMovie.genre}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.director}}">
+          <text class="detail-label">导演：</text>
+          <text class="detail-value">{{selectedMovie.director}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.actors}}">
+          <text class="detail-label">主演：</text>
+          <text class="detail-value">{{selectedMovie.actors}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.movieInfo}}">
+          <text class="detail-label">电影简介：</text>
+          <text class="detail-value detail-summary">{{selectedMovie.movieInfo}}</text>
+        </view>
+        <view class="detail-item" wx:if="{{selectedMovie.summary}}">
+          <text class="detail-label">剧情简介：</text>
+          <text class="detail-value detail-summary">{{selectedMovie.summary}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">观看状态：</text>
+          <text class="detail-value {{selectedMovie.watched ? 'status-watched' : 'status-unwatched'}}">{{selectedMovie.watched ? '已观看' : '未观看'}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">添加时间：</text>
+          <text class="detail-value">{{selectedMovie.createTime}}</text>
+        </view>
+      </view>
+      <view class="detail-actions">
+        <button class="detail-btn secondary" bindtap="hideDetailModal">关闭</button>
+        <button class="detail-btn primary" bindtap="toggleWatchStatus">{{selectedMovie.watched ? '标记未看' : '标记已看'}}</button>
+        <button class="detail-btn danger" bindtap="deleteMoviePlan" loading="{{isDeleting}}">{{isDeleting ? '删除中...' : '删除'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 悬浮添加按钮 -->
+  <view class="floating-add-btn" bindtap="showAddModal">
+    <text class="add-icon">+</text>
+  </view>
+
+  <debug-panel></debug-panel>
+</view>

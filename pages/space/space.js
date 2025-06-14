@@ -716,10 +716,8 @@ Page({
             });
           });
           console.log('图片已缓存,无需下载');
-          // 更新访问时间
-          cacheItem.lastAccess = now;
-          imageCache.set(fileID, cacheItem);
-          this.saveCacheData();
+          // 更新对应瞬间的访问时间
+          this.updateMomentLastAccess(fileID);
           return cacheItem.localPath;
         } catch (e) {
           // 缓存文件不存在，从缓存中移除
@@ -774,11 +772,14 @@ Page({
       const cacheItem = {
         localPath: localPath,
         size: fileSize,
-        lastAccess: now,
+        lastAccess: now, // 保留作为降级方案
         downloadTime: now
       };
       
       imageCache.set(fileID, cacheItem);
+      
+      // 更新对应瞬间的访问时间
+      this.updateMomentLastAccess(fileID);
       
       // 更新统计信息
       const cacheStats = this.data.cacheStats;
@@ -809,11 +810,7 @@ Page({
 
   /**
    * 确保缓存空间足够
-   * 逻辑：
-   * 1. 如果当前大小加上需要的大小超过限制，则清理缓存
-   * 2. 找到最久未访问的图片
-   * 3. 清理最久未访问的图片
-   * 4. 重复1-3，直到当前大小加上需要的大小小于限制
+   * 基于瞬间访问时间来清理最久未访问的图片
    * @param {number} requiredSize - 需要的空间大小
    * @returns {Promise<void>}
    */
@@ -822,20 +819,53 @@ Page({
     
     // 如果当前大小加上需要的大小超过限制，则清理缓存
     while (cacheStats.totalSize + requiredSize > maxImageCacheSize && imageCache.size > 0) {
-      // 找到最久未访问的图片
+      // 基于瞬间访问时间找到最久未访问的图片
       let oldestFileID = null;
       let oldestTime = Date.now();
       
-      
-      for (const [fileID, cacheItem] of imageCache.entries()) {
-        if (cacheItem.lastAccess < oldestTime) {
-          oldestTime = cacheItem.lastAccess;
-          oldestFileID = fileID;
+      try {
+        const cacheKey = `coupleMoments_${this.data.coupleId}`;
+        const cachedMoments = wx.getStorageSync(cacheKey) || [];
+        
+        // 为每个缓存的图片找到对应瞬间的访问时间
+        for (const [fileID, cacheItem] of imageCache.entries()) {
+          let imageAccessTime = Date.now(); // 默认为当前时间
+          
+          // 查找包含该图片的瞬间
+          for (const moment of cachedMoments) {
+            if (moment.images && Array.isArray(moment.images)) {
+              const hasTargetImage = moment.images.some(img => {
+                const imgFileID = typeof img === 'string' ? img : (img.cloudUrl || img);
+                return imgFileID === fileID;
+              });
+              
+              if (hasTargetImage) {
+                const momentLastAccess = moment.lastAccess || moment.timestamp || 0;
+                imageAccessTime = typeof momentLastAccess === 'string' ? new Date(momentLastAccess).getTime() : momentLastAccess;
+                break;
+              }
+            }
+          }
+          
+          // 找到访问时间最早的图片
+          if (imageAccessTime < oldestTime) {
+            oldestTime = imageAccessTime;
+            oldestFileID = fileID;
+          }
+        }
+      } catch (error) {
+        console.error('查找最久未访问图片时发生错误:', error);
+        // 降级到使用图片自身的lastAccess时间
+        for (const [fileID, cacheItem] of imageCache.entries()) {
+          if (cacheItem.lastAccess < oldestTime) {
+            oldestTime = cacheItem.lastAccess;
+            oldestFileID = fileID;
+          }
         }
       }
       
       if (oldestFileID) {
-        await this.removeCacheItem(oldestFileID);
+        await this.removeCacheItemOnly(oldestFileID);
       } else {
         break;
       }
@@ -843,9 +873,10 @@ Page({
   },
 
   /**
-   * 移除缓存项
+   * 移除缓存项（仅删除缓存和本地文件，不删除瞬间数据）
+   * @param {string} fileID - 文件ID
    */
-  async removeCacheItem(fileID) {
+  async removeCacheItemOnly(fileID) {
     const { imageCache, cacheStats } = this.data;
     const cacheItem = imageCache.get(fileID);
     
@@ -867,11 +898,34 @@ Page({
           fail: reject
         });
       });
-
-    
     } catch (error) {
       console.warn('删除本地文件失败:', error);
     }
+    
+    // 更新统计信息
+    cacheStats.totalSize -= cacheItem.size;
+    cacheStats.imageCount -= 1;
+    
+    // 从缓存中移除
+
+    // 删除操作
+    imageCache.delete(fileID);
+    
+    // 立即更新本地存储中的imageCache
+    const imageCacheObj = Object.fromEntries(imageCache.entries());
+    wx.setStorageSync(`imageCache_${this.data.coupleId}`, imageCacheObj);
+    
+    this.setData({ imageCache, cacheStats });
+    console.log(`移除缓存项: ${fileID}, 释放空间: ${this.formatFileSize(cacheItem.size)}`);
+  },
+
+  /**
+   * 移除缓存项（包含删除瞬间数据，用于用户主动删除）
+   * @param {string} fileID - 文件ID
+   */
+  async removeCacheItem(fileID) {
+    // 先删除缓存和本地文件
+    await this.removeCacheItemOnly(fileID);
     
     // 从coupleMoments本地存储中删除包含该fileID的瞬间数据
     try {
@@ -905,38 +959,59 @@ Page({
     } catch (error) {
       console.warn('从coupleMoments删除相关瞬间失败:', error);
     }
-    
-    // 更新统计信息
-    cacheStats.totalSize -= cacheItem.size;
-    cacheStats.imageCount -= 1;
-    
-    // 从缓存中移除
-    imageCache.delete(fileID);
-    
-    this.setData({ imageCache, cacheStats });
-    console.log(`移除缓存项: ${fileID}, 释放空间: ${this.formatFileSize(cacheItem.size)}`);
   },
 
   /**
-   * 智能缓存清理
+   * 智能缓存清理 - 基于瞬间访问时间
+   * 清理7天未访问的瞬间及其关联的图片缓存和本地文件
    */
   async smartCacheCleanup() {
-    const { imageCache, cacheStats } = this.data;
+    const { cacheStats } = this.data;
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
     // const sevenDaysAgo = now - 0.1 * 60 * 1000;
-    let cleanedCount = 0;
+    let cleanedMomentsCount = 0;
+    let cleanedImagesCount = 0;
     let cleanedSize = 0;
     
-    console.log('开始智能缓存清理，当前缓存项数量:', imageCache.size);
+    console.log('开始基于瞬间访问时间的智能缓存清理');
     
-    // 清理7天未访问的图片
-    for (const [fileID, cacheItem] of imageCache.entries()) {
-      if (cacheItem.lastAccess < sevenDaysAgo) {
-        cleanedSize += cacheItem.size;
-        cleanedCount++;
-        await this.removeCacheItem(fileID); 
+    try {
+      const cacheKey = `coupleMoments_${this.data.coupleId}`;
+      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      const momentsToKeep = [];
+      
+      // 遍历所有瞬间，检查访问时间
+      for (const moment of cachedMoments) {
+        const momentLastAccess = moment.lastAccess || moment.timestamp || 0;
+        const lastAccessTime = typeof momentLastAccess === 'string' ? new Date(momentLastAccess).getTime() : momentLastAccess;
+        
+        if (lastAccessTime < sevenDaysAgo) {
+          // 瞬间超过7天未访问，删除其关联的图片缓存和本地文件
+          cleanedMomentsCount++;
+          
+          if (moment.images && Array.isArray(moment.images)) {
+            for (const img of moment.images) {
+              const fileID = typeof img === 'string' ? img : (img.cloudUrl || img);
+              if (fileID && this.data.imageCache.has(fileID)) {
+                const cacheItem = this.data.imageCache.get(fileID);
+                cleanedSize += cacheItem.size || 0;
+                cleanedImagesCount++;
+                await this.removeCacheItemOnly(fileID);
+              }
+            }
+          }
+        } else {
+          // 保留未过期的瞬间
+          momentsToKeep.push(moment);
+        }
       }
+      
+      // 更新coupleMoments缓存，只保留未过期的瞬间
+      wx.setStorageSync(cacheKey, momentsToKeep);
+      
+    } catch (error) {
+      console.error('智能清理过程中发生错误:', error);
     }
     
     // 更新清理时间
@@ -944,12 +1019,12 @@ Page({
     this.setData({ cacheStats });
     this.saveCacheData();
     
-    console.log(`智能清理完成: 清理了${cleanedCount}个文件, 释放${this.formatFileSize(cleanedSize)}空间, 剩余缓存项: ${imageCache.size}`);
+    console.log(`智能清理完成: 清理了${cleanedMomentsCount}个瞬间, ${cleanedImagesCount}个图片文件, 释放${this.formatFileSize(cleanedSize)}空间`);
     
-    if (cleanedCount > 0) {
-      console.log(`智能清理完成: 清理了${cleanedCount}个文件, 释放${this.formatFileSize(cleanedSize)}空间`);
+    if (cleanedMomentsCount > 0) {
+      console.log(`智能清理完成: 清理了${cleanedMomentsCount}个瞬间, ${cleanedImagesCount}个图片文件, 释放${this.formatFileSize(cleanedSize)}空间`);
     } else {
-      console.log('智能清理完成: 没有需要清理的缓存项');
+      console.log('智能清理完成: 没有需要清理的瞬间');
     }
   },
 
@@ -971,15 +1046,58 @@ Page({
   },
 
   /**
+   * 更新包含指定图片的瞬间的访问时间
+   * @param {string} fileID - 图片的云端fileID
+   */
+  updateMomentLastAccess(fileID) {
+    try {
+      const cacheKey = `coupleMoments_${this.data.coupleId}`;
+      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      const now = Date.now();
+      let updated = false;
+      
+      // 查找包含该图片的瞬间并更新其访问时间
+      const updatedMoments = cachedMoments.map(moment => {
+        if (moment.images && Array.isArray(moment.images)) {
+          const hasTargetImage = moment.images.some(img => {
+            if (typeof img === 'string') {
+              return img === fileID;
+            } else if (typeof img === 'object' && img.cloudUrl) {
+              return img.cloudUrl === fileID;
+            }
+            return false;
+          });
+          
+          if (hasTargetImage) {
+            updated = true;
+            return {
+              ...moment,
+              lastAccess: now // 更新瞬间的访问时间
+            };
+          }
+        }
+        return moment;
+      });
+      
+      // 如果有更新，保存到本地存储
+      if (updated) {
+        wx.setStorageSync(cacheKey, updatedMoments);
+      }
+    } catch (error) {
+      console.warn('更新瞬间访问时间失败:', error);
+    }
+  },
+
+  /**
    * 获取缓存的图片路径
+   * 同时更新对应瞬间的访问时间
    */
   getCachedImagePath(fileID) {
     const cacheItem = this.data.imageCache.get(fileID);
     // 当删除本地缓存，fileId会变成云端地址
     if (cacheItem) {
-      // 更新访问时间
-      cacheItem.lastAccess = Date.now();
-      this.data.imageCache.set(fileID, cacheItem);
+      // 更新对应瞬间的访问时间而不是图片的访问时间
+      this.updateMomentLastAccess(fileID);
       
       // 检查并修正路径格式
       let localPath = cacheItem.localPath;
@@ -1089,7 +1207,7 @@ Page({
         console.log(`发现${orphanedImageIds.length}个孤儿图片文件，开始清理...`);
         
         for (const fileID of orphanedImageIds) {
-          await this.removeCacheItem(fileID);
+          await this.removeCacheItemOnly(fileID);
         }
         
         console.log(`孤儿图片文件清理完成，共清理${orphanedImageIds.length}个文件`);
@@ -1195,6 +1313,9 @@ Page({
 
   /**
    * 智能缓存清理 - 支持选择性清理
+   * @param {Object} options - 选项
+   * @param {boolean} options.force - 是否强制清理所有缓存
+   * @param {boolean} options.showToast - 是否显示清理完成提示
    */
   async clearImageCache(options = {}) {
     const { force = false, showToast = true } = options;
@@ -1208,20 +1329,49 @@ Page({
       for (const [fileID, cacheItem] of imageCache.entries()) {
         cleanedSize += cacheItem.size;
         cleanedCount++;
-        await this.removeCacheItem(fileID);
+        await this.removeCacheItemOnly(fileID);
       }
     } else {
-      // 智能清理：清理超过7天未访问的图片
+      // 智能清理：基于瞬间访问时间清理超过7天未访问的图片
       const now = Date.now();
       const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-      // const sevenDaysAgo = now - 0.3 * 60 * 1000;
-      console.log('智能清理：清理超过7天未访问的图片')
-      for (const [fileID, cacheItem] of imageCache.entries()) {
-        if (cacheItem.lastAccess < sevenDaysAgo) {
-          cleanedSize += cacheItem.size;
-          cleanedCount++;
-          await this.removeCacheItem(fileID);
+      // const sevenDaysAgo = now - 0.1 * 60 * 1000;
+      console.log('智能清理：基于瞬间访问时间清理超过7天未访问的图片');
+      
+      try {
+        const cacheKey = `coupleMoments_${this.data.coupleId}`;
+        const cachedMoments = wx.getStorageSync(cacheKey) || [];
+        const momentsToKeep = [];
+        
+        // 遍历所有瞬间，检查访问时间
+        for (const moment of cachedMoments) {
+          const momentLastAccess = moment.lastAccess || moment.timestamp || 0;
+          const lastAccessTime = typeof momentLastAccess === 'string' ? new Date(momentLastAccess).getTime() : momentLastAccess;
+          
+          if (lastAccessTime < sevenDaysAgo) {
+            // 瞬间超过7天未访问，删除其关联的图片缓存和本地文件
+            if (moment.images && Array.isArray(moment.images)) {
+              for (const img of moment.images) {
+                const fileID = typeof img === 'string' ? img : (img.cloudUrl || img);
+                if (fileID && imageCache.has(fileID)) {
+                  const cacheItem = imageCache.get(fileID);
+                  cleanedSize += cacheItem.size || 0;
+                  cleanedCount++;
+                  await this.removeCacheItemOnly(fileID);
+                }
+              }
+            }
+          } else {
+            // 保留未过期的瞬间
+            momentsToKeep.push(moment);
+          }
         }
+        
+        // 更新coupleMoments缓存，只保留未过期的瞬间
+        wx.setStorageSync(cacheKey, momentsToKeep);
+        
+      } catch (error) {
+        console.error('智能清理过程中发生错误:', error);
       }
     }
     
@@ -1933,7 +2083,7 @@ Page({
           // 使用新的智能缓存系统删除缓存项
           const deletePromises = fileIDs.map(async (fileID) => {
             try {
-              await this.removeCacheItem(fileID);
+              await this.removeCacheItemOnly(fileID);
             } catch (error) {
               console.warn('删除缓存项失败:', fileID, error);
             }

@@ -4,7 +4,9 @@
     "pages/bind/bind", 
     "pages/space/space",
     "pages/index/index",
-    "pages/logs/logs"
+    "pages/logs/logs",
+    "pages/plan/plan",
+    "pages/plan/movie/movie"
   ],
   "window": {
     "navigationBarTextStyle": "black",

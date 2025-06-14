@@ -143,9 +143,6 @@
         
         <!-- 图片选择区域 -->
         <view class="image-selector">
-          <view class="image-tip" wx:if="{{selectedImages.length === 0}}">
-            <text class="tip-text">📷 请至少选择一张图片才能发布</text>
-          </view>
           <view class="selected-images">
             <view class="image-item" wx:for="{{selectedImages}}" wx:key="index">
               <image src="{{item}}" mode="aspectFill"></image>
@@ -153,7 +150,7 @@
             </view>
             <view class="add-image" wx:if="{{selectedImages.length < 9}}" bindtap="selectImages">
               <text class="add-icon">+</text>
-              <text class="add-text">{{selectedImages.length === 0 ? '添加图片（必需）' : '添加更多图片'}}</text>
+              <text class="add-text">{{selectedImages.length === 0 ? '添加图片\n（必需）' : '添加更多图片'}}</text>
             </view>
           </view>
         </view>

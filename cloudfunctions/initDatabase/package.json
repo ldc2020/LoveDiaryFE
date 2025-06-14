@@ -1,0 +1,19 @@
+{
+  "name": "initDatabase",
+  "version": "1.0.0",
+  "description": "初始化情侣计划数据库集合",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "database",
+    "initialization",
+    "love-diary"
+  ],
+  "author": "Love Diary Team",
+  "license": "MIT"
+}
