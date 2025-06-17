@@ -141,7 +141,7 @@ try {
 
 `initDatabase` 云函数会自动创建以下数据库集合：
 
-1. **ld_movie_plans** - 电影计划集合
+1. **ld_movie_plans** - 影视计划集合
 2. **ld_cooking_plans** - 烹饪计划集合
 3. **ld_exercise_plans** - 运动计划集合
 4. **ld_travel_plans** - 旅游计划集合

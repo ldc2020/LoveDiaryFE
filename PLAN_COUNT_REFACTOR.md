@@ -15,7 +15,7 @@
 
 #### 1.2 movie.js 中删除的方法
 - `updateCouplePlansCache()` - 更新情侣计划页面的统一缓存
-- `removeFromCouplePlansCache()` - 从情侣计划页面的统一缓存中移除电影计划
+- `removeFromCouplePlansCache()` - 从情侣计划页面的统一缓存中移除影视计划
 - `notifyPlanPageUpdate()` - 通知情侣计划页面更新统计数据
 - 删除了所有调用 `notifyPlanPageUpdate()` 的代码
 

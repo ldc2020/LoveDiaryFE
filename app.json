@@ -6,7 +6,8 @@
     "pages/index/index",
     "pages/logs/logs",
     "pages/plan/plan",
-    "pages/plan/movie/movie"
+    "pages/plan/movie/movie",
+    "pages/plan/cooking/cooking"
   ],
   "window": {
     "navigationBarTextStyle": "black",

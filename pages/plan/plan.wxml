@@ -15,11 +15,11 @@
   <scroll-view class="plan-content" scroll-y="true" enhanced="true">
     <view class="plan-cards-grid">
       
-      <!-- 电影计划卡片 -->
+      <!-- 影视计划卡片 -->
       <view class="plan-card" bindtap="navigateToPlanDetail" data-type="movie">
         <view class="card-icon">🎬</view>
         <view class="card-content">
-          <text class="card-title">电影计划</text>
+          <text class="card-title">影视计划</text>
           <text class="card-count">{{planCounts.movie}}</text>
         </view>
       </view>
@@ -120,7 +120,7 @@
       
       <view class="modal-content" wx:if="{{currentPlanDetail}}" catchtap="stopPropagation">
         
-        <!-- 电影计划详情 -->
+        <!-- 影视计划详情 -->
         <view wx:if="{{currentPlanDetail.type === 'movie'}}">
           <view class="detail-item">
             <text class="detail-label">电影名称：</text>
@@ -277,7 +277,7 @@
   <view class="modal-overlay" wx:if="{{showManualAddModal}}" bindtap="hideManualAdd">
     <view class="input-modal" catchtap="stopPropagation">
       <view class="modal-header">
-        <text class="modal-title">添加电影计划</text>
+        <text class="modal-title">添加影视计划</text>
         <view class="modal-close" bindtap="hideManualAdd">
           <text class="iconfont icon-close"></text>
         </view>

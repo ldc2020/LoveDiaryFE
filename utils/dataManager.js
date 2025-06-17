@@ -991,6 +991,24 @@ class DataManager {
       console.error(`${this.config.cachePrefix}: 保存缓存数据失败`, error);
     }
   }
+
+  /**
+   * 更新缓存统计信息
+   * @description 更新并保存缓存统计数据到本地存储
+   */
+  updateCacheStats() {
+    try {
+      const cacheStatsKey = `${this.config.cachePrefix}_cacheStats_${this.coupleId}`;
+      wx.setStorageSync(cacheStatsKey, this.cacheStats);
+      console.log(`${this.config.cachePrefix}: 缓存统计已更新`, {
+        总大小: this.formatFileSize(this.cacheStats.totalSize),
+        图片数量: this.cacheStats.imageCount,
+        最后清理: this.cacheStats.lastCleanup ? new Date(this.cacheStats.lastCleanup).toLocaleString() : '从未清理'
+      });
+    } catch (error) {
+      console.error(`${this.config.cachePrefix}: 更新缓存统计失败`, error);
+    }
+  }
   
   /**
    * 格式化文件大小

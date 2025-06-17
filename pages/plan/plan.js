@@ -569,7 +569,7 @@ Page({
    */
   getPlanTypeName(planType) {
     const typeNames = {
-      movie: '电影计划',
+      movie: '影视计划',
       cooking: '烹饪计划',
       exercise: '运动打卡',
       travel: '旅游计划',
@@ -916,7 +916,7 @@ Page({
 
 
   /**
-   * 添加电影计划
+   * 添加影视计划
    */
   async addMoviePlan() {
     const { movieInfo, userInfo } = this.data;
@@ -965,7 +965,7 @@ Page({
       });
 
     } catch (error) {
-      console.error('添加电影计划失败:', error);
+      console.error('添加影视计划失败:', error);
       wx.showToast({
         title: '添加失败，请重试',
         icon: 'error'

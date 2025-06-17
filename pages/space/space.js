@@ -63,9 +63,10 @@ Page({
 
     // 初始化智能缓存系统
     this.initSmartCacheSystem();
-
+    
     // 获取用户信息
     this.getUserInfo().then(userInfo => {
+
       this.setData({ userInfo });
     }).catch(error => {
       console.error('获取用户信息失败:', error);
@@ -81,7 +82,7 @@ Page({
     }).catch(error => {
       console.error('获取情侣信息失败:', error);
     });
-
+    
     // 获取瞬间列表
     this.getMoments();
   },
@@ -229,6 +230,7 @@ Page({
         resolve(cachedUserInfo);
         return;
       }
+     
 
       // 如果缓存中没有，则从云数据库获取
       const db = wx.cloud.database();
@@ -301,7 +303,8 @@ Page({
         if (res.data.length > 0) {
           const partnerInfo = {
             nickName: res.data[0].nickName,
-            avatarUrl: res.data[0].avatarUrl
+            avatarUrl: res.data[0].avatarUrl, // 这里应该是本地缓存路径，但space.js可能需要进一步优化
+            cloudAvatarUrl: res.data[0].avatarUrl // 云端头像URL，用于比较是否需要更新
           };
           wx.setStorageSync('partnerInfo', partnerInfo);
           resolve(partnerInfo);
@@ -571,34 +574,45 @@ Page({
         return moments;
       }
       
-      // 从数据库获取最新的用户信息
-      const db = wx.cloud.database();
-      const userInfos = await db.collection('ld_user_info').where({
-        openid: db.command.in([currentOpenid, partnerId])
-      }).get();
-      
-      // 创建用户信息映射，使用本地存储的头像信息
+      // 直接从本地存储获取用户信息，提高性能（根据用户反馈优化）
       const userMap = {};
       
-      // 获取本地存储的用户头像信息
+      // 获取本地存储的用户信息
       const localUserInfo = wx.getStorageSync('userInfo');
       const partnerInfo = wx.getStorageSync('partnerInfo');
       
-      for (const user of userInfos.data) {
-        let avatarUrl = './images/default-avatar.png';
-        
-        // 如果是当前用户，使用本地存储的头像
-        if (user.openid === currentOpenid && localUserInfo?.localAvatarPath) {
-          avatarUrl = localUserInfo.localAvatarPath;
-        }
-        // 如果是伴侣，使用本地存储的伴侣头像
-        else if (user.openid === partnerId && partnerInfo?.avatarUrl) {
-          avatarUrl = partnerInfo.avatarUrl;
+      // 处理当前用户信息
+      if (localUserInfo) {
+        let currentUserAvatar = './images/default-avatar.png';
+        if (localUserInfo.localAvatarPath) {
+          currentUserAvatar = localUserInfo.localAvatarPath;
         }
         
-        userMap[user.openid] = {
-          avatar: avatarUrl,
-          name: user.nickName || (user.openid === currentOpenid ? '我' : 'TA')
+        userMap[currentOpenid] = {
+          avatar: currentUserAvatar,
+          name: localUserInfo.nickName || '我'
+        };
+      }
+      
+      // 处理伴侣信息
+      if (partnerInfo && partnerId) {
+        let partnerAvatar = './images/default-avatar.png';
+        
+        // 优先使用本地缓存的头像，检查是否为无效的127.0.0.1地址
+        if (partnerInfo.avatarUrl && !partnerInfo.avatarUrl.includes('127.0.0.1')) {
+          partnerAvatar = partnerInfo.avatarUrl;
+        }
+        // 如果本地头像不可用，尝试使用云端头像
+        else if (partnerInfo.cloudAvatarUrl) {
+          // 异步下载并缓存云端头像
+          this.downloadAndCachePartnerAvatar(partnerInfo.cloudAvatarUrl, partnerId);
+          // 暂时使用云端URL，下载完成后会自动更新
+          partnerAvatar = partnerInfo.cloudAvatarUrl;
+        }
+        
+        userMap[partnerId] = {
+          avatar: partnerAvatar,
+          name: partnerInfo.nickName || 'TA'
         };
       }
       

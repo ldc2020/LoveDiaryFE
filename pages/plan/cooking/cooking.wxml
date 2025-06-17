@@ -1,0 +1,356 @@
+<!--烹饪计划页面 - 智能菜谱生成和管理-->
+<view class="cooking-container">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <text class="page-title">🍳 烹饪计划</text>
+    <view class="smart-input-btn" bindtap="showAddRecipeModal">
+      <text class="iconfont icon-add"></text>
+      <text>智能添加</text>
+    </view>
+  </view>
+
+  <!-- 菜谱列表 -->
+  <view class="recipe-list">
+    <!-- 加载状态 -->
+    <view wx:if="{{loading && recipeList.length === 0}}" class="loading-container">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在加载菜谱...</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:elif="{{!loading && recipeList.length === 0}}" class="empty-state">
+      <view class="empty-icon">🍽️</view>
+      <text class="empty-title">还没有菜谱</text>
+      <text class="empty-desc">点击上方按钮添加第一个菜谱吧</text>
+    </view>
+
+    <!-- 菜谱卡片列表 -->
+    <view wx:else class="recipe-cards">
+      <view 
+        wx:for="{{recipeList}}" 
+        wx:key="_id" 
+        class="recipe-card"
+        bindtap="onRecipeCardTap"
+        data-recipe="{{item}}"
+      >
+        <!-- 菜谱图片 - 只有当存在图片时才显示 -->
+        <view wx:if="{{item.finishedImage}}" class="card-image">
+          <image 
+            src="{{item.finishedImage}}"
+            class="recipe-image"
+            mode="aspectFill"
+          />
+          <!-- 难度标签 -->
+          <view class="difficulty-tag difficulty-{{item.difficulty === '简单' ? 'easy' : item.difficulty === '中等' ? 'medium' : 'hard'}}">
+            {{item.difficulty}}
+          </view>
+        </view>
+        
+        <!-- 无图片时的难度标签 -->
+        <view wx:else class="no-image-difficulty">
+          <view class="difficulty-tag-no-image difficulty-{{item.difficulty === '简单' ? 'easy' : item.difficulty === '中等' ? 'medium' : 'hard'}}">
+            {{item.difficulty}}
+          </view>
+        </view>
+
+        <!-- 菜谱信息 -->
+        <view class="card-content">
+          <view class="card-header">
+            <text class="dish-name">{{item.dishName}}</text>
+            <view class="cooking-time">
+              <text class="iconfont icon-time"></text>
+              <text class="time-text">{{item.cookingTime}}分钟</text>
+            </view>
+          </view>
+          
+          <text class="description">{{item.description}}</text>
+          
+          <!-- 标签 -->
+          <view class="tags">
+            <text 
+              wx:for="{{item.tags}}" 
+              wx:for-item="tag" 
+              wx:key="*this" 
+              class="tag tag-color-{{(index + 1) % 6 + 1}}"
+            >
+              {{tag}}
+            </text>
+          </view>
+          
+          <!-- 底部信息 -->
+          <view class="card-footer">
+            <view class="servings">
+              <text class="iconfont icon-user"></text>
+              <text>{{item.servings}}人份</text>
+            </view>
+            <view class="creator">
+              <text class="creator-name">{{item.creatorName}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多提示 -->
+    <view wx:if="{{loading && recipeList.length > 0}}" class="load-more">
+      <view class="loading-spinner small"></view>
+      <text>加载中...</text>
+    </view>
+    
+    <view wx:elif="{{!hasMore && recipeList.length > 0}}" class="no-more">
+      <text>已显示全部菜谱</text>
+    </view>
+  </view>
+</view>
+
+<!-- 智能添加菜谱弹窗 -->
+<view wx:if="{{showAddModal}}" class="modal-overlay" bindtap="hideAddModal">
+  <view class="add-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">🤖 智能添加菜谱</text>
+      <button class="close-btn" bindtap="hideAddModal">
+      </button>
+    </view>
+    
+    <view class="modal-content">
+      <view class="input-section">
+        <textarea 
+          class="recipe-input"
+          placeholder="{{inputPlaceholder}}"
+          value="{{inputText}}"
+          bindinput="onInputChange"
+          maxlength="1000"
+          auto-height
+        />
+        <view class="input-counter">
+          <text>{{inputText.length}}/1000</text>
+        </view>
+      </view>
+      
+      <view class="tips">
+        <view class="tip-item">
+          <text class="tip-icon">💡</text>
+          <text class="tip-text">输入菜名如"宫保鸡丁"，AI将自动生成完整菜谱</text>
+        </view>
+        <view class="tip-item">
+          <text class="tip-icon">📝</text>
+          <text class="tip-text">输入完整菜谱，AI将帮您整理格式和添加emoji</text>
+        </view>
+      </view>
+    </view>
+    
+    <view class="modal-footer">
+      <button class="cancel-btn" bindtap="hideAddModal">取消</button>
+      <button 
+        class="generate-btn {{isGenerating ? 'loading' : ''}}"
+        bindtap="generateRecipe"
+        disabled="{{isGenerating}}"
+      >
+        <view wx:if="{{isGenerating}}" class="btn-loading">
+          <view class="loading-spinner small"></view>
+          <text>AI生成中...</text>
+        </view>
+        <text wx:else>🚀 智能生成</text>
+      </button>
+    </view>
+  </view>
+</view>
+
+<!-- 菜谱详情弹窗 -->
+<view wx:if="{{showDetailModal}}" class="modal-overlay" bindtap="hideDetailModal">
+  <view class="detail-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">{{currentRecipe.dishName}}</text>
+      <button class="close-btn" bindtap="hideDetailModal">
+        <text class="iconfont icon-close"></text>
+      </button>
+    </view>
+    
+    <scroll-view class="modal-content scroll-hidden" scroll-y>
+      <!-- 菜谱基本信息 -->
+      <view class="recipe-info">
+        <!-- 成品图片 - 只有当存在图片时才显示 -->
+        <view wx:if="{{currentRecipe.finishedImage}}" class="finished-image-section">
+          <view class="finished-image">
+            <image 
+              src="{{currentRecipe.finishedImage}}"
+              class="finished-img"
+              mode="aspectFill"
+            />
+          </view>
+        </view>
+        
+        <!-- 菜谱描述 -->
+        <view class="recipe-desc">
+          <text wx:if="{{!isEditing}}">{{currentRecipe.description}}</text>
+          <textarea 
+            wx:else
+            class="edit-input"
+            value="{{editRecipe.description}}"
+            bindinput="onEditInputChange"
+            data-field="description"
+            placeholder="请输入菜谱描述"
+          />
+        </view>
+        
+        <!-- 菜谱属性 -->
+        <view class="recipe-attrs">
+          <view class="attr-item">
+            <text class="attr-label">⏱️ 烹饪时间</text>
+            <text wx:if="{{!isEditing}}" class="attr-value">{{currentRecipe.cookingTime}}分钟</text>
+            <input 
+              wx:else
+              class="edit-input small"
+              type="number"
+              value="{{editRecipe.cookingTime}}"
+              bindinput="onEditInputChange"
+              data-field="cookingTime"
+            />
+          </view>
+          <view class="attr-item">
+            <text class="attr-label">👥 份量</text>
+            <text wx:if="{{!isEditing}}" class="attr-value">{{currentRecipe.servings}}人份</text>
+            <input 
+              wx:else
+              class="edit-input small"
+              type="number"
+              value="{{editRecipe.servings}}"
+              bindinput="onEditInputChange"
+              data-field="servings"
+            />
+          </view>
+          <view class="attr-item">
+            <text class="attr-label">⭐ 难度</text>
+            <text wx:if="{{!isEditing}}" class="attr-value">{{currentRecipe.difficulty}}</text>
+            <picker 
+              wx:else
+              class="edit-picker"
+              range="{{['简单', '中等', '困难']}}"
+              value="{{editRecipe.difficulty}}"
+              bindchange="onEditInputChange"
+              data-field="difficulty"
+            >
+              <text class="picker-text">{{editRecipe.difficulty}}</text>
+            </picker>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 食材列表 -->
+      <view class="ingredients-section">
+        <view class="section-header">
+          <text class="section-title">🥘 所需食材</text>
+          <button wx:if="{{isEditing}}" class="add-btn" bindtap="addIngredient">+</button>
+        </view>
+        <view class="ingredients-list">
+          <view 
+            wx:for="{{isEditing ? editRecipe.ingredients : currentRecipe.ingredients}}" 
+            wx:key="name" 
+            class="ingredient-item {{isEditing ? 'editing' : ''}}"
+          >
+            <text class="ingredient-emoji">{{item.emoji}}</text>
+            <view wx:if="{{!isEditing}}" class="ingredient-content">
+              <text class="ingredient-name">{{item.name}}</text>
+              <text class="ingredient-amount">{{item.amount}}</text>
+            </view>
+            <view wx:else class="ingredient-edit">
+              <input 
+                class="edit-input ingredient-name-input"
+                value="{{item.name}}"
+                bindinput="onIngredientChange"
+                data-index="{{index}}"
+                data-field="name"
+                placeholder="食材名称"
+              />
+              <input 
+                class="edit-input ingredient-amount-input"
+                value="{{item.amount}}"
+                bindinput="onIngredientChange"
+                data-index="{{index}}"
+                data-field="amount"
+                placeholder="用量"
+              />
+              <button 
+                class="remove-btn"
+                bindtap="removeIngredient"
+                data-index="{{index}}"
+              >×</button>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 制作步骤 -->
+      <view class="steps-section">
+        <view class="section-header">
+          <text class="section-title">👨‍🍳 制作步骤</text>
+          <button wx:if="{{isEditing}}" class="add-btn" bindtap="addStep">+</button>
+        </view>
+        <view class="steps-list">
+          <view 
+            wx:for="{{isEditing ? editRecipe.steps : currentRecipe.steps}}" 
+            wx:key="*this" 
+            class="step-item {{isEditing ? 'editing' : ''}}"
+          >
+            <view class="step-number">{{index + 1}}</view>
+            <view wx:if="{{!isEditing}}" class="step-content-wrapper">
+              <text class="step-content">{{item}}</text>
+            </view>
+            <view wx:else class="step-edit">
+              <textarea 
+                class="edit-input step-textarea"
+                value="{{item}}"
+                bindinput="onStepChange"
+                data-index="{{index}}"
+                placeholder="请输入制作步骤"
+                auto-height
+              />
+              <button 
+                class="remove-btn"
+                bindtap="removeStep"
+                data-index="{{index}}"
+              >×</button>
+            </view>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 标签 -->
+      <view class="tags-section">
+        <text class="section-title">🏷️ 标签</text>
+        <view class="tags">
+          <text 
+            wx:for="{{currentRecipe.tags}}" 
+            wx:key="*this" 
+            class="tag tag-color-{{(index + 1) % 6 + 1}}"
+          >
+            {{item}}
+          </text>
+        </view>
+      </view>
+    </scroll-view>
+    
+    <!-- 操作按钮 -->
+    <view class="modal-footer">
+      <view wx:if="{{!isEditing}}" class="action-buttons">
+        <button class="action-btn upload-btn" bindtap="uploadFinishedImage">
+          <text class="iconfont icon-camera"></text>
+          <text>{{uploadingImage ? '上传中...' : '上传成品图'}}</text>
+        </button>
+        <button class="action-btn edit-btn" bindtap="startEditRecipe">
+          <text class="iconfont icon-edit"></text>
+          <text>编辑</text>
+        </button>
+        <button class="action-btn delete-btn" bindtap="deleteRecipe">
+          <text class="iconfont icon-delete"></text>
+          <text>删除</text>
+        </button>
+      </view>
+      
+      <view wx:else class="edit-buttons">
+        <button class="cancel-btn" bindtap="cancelEdit">取消</button>
+        <button class="save-btn" bindtap="saveEdit">保存</button>
+      </view>
+    </view>
+  </view>
+</view>

@@ -114,7 +114,8 @@ Page({
             const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
             wx.setStorageSync('partnerInfo', {
               nickName: partnerInfo.nickName,
-              avatarUrl: localAvatarUrl
+              avatarUrl: localAvatarUrl, // 本地缓存的头像路径
+              cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
             });
             console.log('被动绑定 - 已保存伴侣信息:', partnerInfo.nickName, localAvatarUrl);
           }
@@ -229,7 +230,8 @@ Page({
             const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
             wx.setStorageSync('partnerInfo', {
               nickName: partnerInfo.nickName,
-              avatarUrl: localAvatarUrl
+              avatarUrl: localAvatarUrl, // 本地缓存的头像路径
+              cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
             });
             console.log('被动绑定检查 - 已保存伴侣信息:', partnerInfo.nickName, localAvatarUrl);
           }
@@ -592,10 +594,11 @@ Page({
         wx.setStorageSync('partnerId', partnerInfo.openid || partnerInfo.userId);
         // 下载并缓存伴侣头像
         const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
-        // 保存情侣头像信息到本地
+        // 保存情侣头像信息到本地（包含云端地址用于后续比较）
         wx.setStorageSync('partnerInfo', {
           nickName: partnerInfo.nickName,
-          avatarUrl: localAvatarUrl
+          avatarUrl: localAvatarUrl, // 本地缓存的头像路径
+          cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
         });
         
         // 验证存储结果
@@ -689,10 +692,11 @@ Page({
       
       // 下载并缓存伴侣头像
       const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
-      // 保存情侣头像信息到本地
+      // 保存情侣头像信息到本地（包含云端地址用于后续比较）
       wx.setStorageSync('partnerInfo', {
         nickName: partnerInfo.nickName,
-        avatarUrl: localAvatarUrl
+        avatarUrl: localAvatarUrl, // 本地缓存的头像路径
+        cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
       });
       
       // 验证存储结果

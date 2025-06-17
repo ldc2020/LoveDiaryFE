@@ -2,7 +2,7 @@
 const app = getApp();
 const DataManager = require('../../../utils/dataManager');
 
-// 电影计划数据管理器
+// 影视计划数据管理器
 let movieDataManager = null;
 
 Page({
@@ -10,7 +10,7 @@ Page({
    * 页面的初始数据
    */
   data: {
-    moviePlans: [], // 电影计划列表
+    moviePlans: [], // 影视计划列表
     showAddModal: false, // 是否显示添加弹窗
     showDetailModal: false, // 是否显示详情弹窗
     selectedMovie: null, // 选中的电影详情
@@ -46,7 +46,7 @@ Page({
    * 页面相关事件处理函数--监听用户下拉动作
    */
   onPullDownRefresh() {
-    console.log('用户下拉刷新电影计划');
+    console.log('用户下拉刷新影视计划');
     this.refreshData();
   },
 
@@ -54,7 +54,7 @@ Page({
    * 页面上拉触底事件的处理函数
    */
   onReachBottom() {
-    console.log('触底加载更多电影计划');
+    console.log('触底加载更多影视计划');
     this.loadMoreData();
   },
 
@@ -68,7 +68,7 @@ Page({
       const coupleId = wx.getStorageSync('coupleId');
       const bindStatus = wx.getStorageSync('bindStatus');
       
-      console.log('电影计划页面初始化:', { userInfo: !!userInfo, coupleId, bindStatus });
+      console.log('影视计划页面初始化:', { userInfo: !!userInfo, coupleId, bindStatus });
       
       if (!userInfo || !coupleId || bindStatus !== 'bound') {
         console.warn('用户信息不完整，跳转到绑定页面');
@@ -89,21 +89,21 @@ Page({
         coupleId
       });
       
-      // 初始化电影计划数据管理器
+      // 初始化影视计划数据管理器
       movieDataManager = new DataManager({
-        collectionName: 'ld_movie_plans', // 电影计划数据库集合
+        collectionName: 'ld_movie_plans', // 影视计划数据库集合
         cachePrefix: 'moviePlans', // 缓存前缀
         pageSize: 20, // 每页加载20条
         cleanupInterval: 2, // 每2天清理一次
         retentionPeriod: 30, // 保留30天数据
 
-        hasImages: false, // 电影计划不包含图片
+        hasImages: false, // 影视计划不包含图片
         timestampField: 'createTime', // 时间戳字段
         sortField: 'createTime', // 按创建时间排序
         sortOrder: 'desc' // 降序排列
       });
       
-      console.log('电影计划数据管理器初始化完成');
+      console.log('影视计划数据管理器初始化完成');
       
     } catch (error) {
       console.error('初始化页面失败:', error);
@@ -129,7 +129,7 @@ Page({
     });
     
     try {
-      console.log('开始刷新电影计划数据');
+      console.log('开始刷新影视计划数据');
       
       // 使用dataManager刷新数据
       const moviePlans = await movieDataManager.getData(true, false);
@@ -151,7 +151,7 @@ Page({
         hasMore: paginationState.hasMore
       });
       
-      console.log('电影计划数据刷新完成:', formattedPlans.length);
+      console.log('影视计划数据刷新完成:', formattedPlans.length);
       
 
       
@@ -179,7 +179,7 @@ Page({
     this.setData({ loading: true });
     
     try {
-      console.log('开始加载更多电影计划数据');
+      console.log('开始加载更多影视计划数据');
       
       // 使用dataManager懒加载更多数据
       const moreMoviePlans = await movieDataManager.getData(false, true);
@@ -201,7 +201,7 @@ Page({
         hasMore: paginationState.hasMore
       });
       
-      console.log('加载更多电影计划完成:', formattedMorePlans.length);
+      console.log('加载更多影视计划完成:', formattedMorePlans.length);
       
 
       
@@ -217,7 +217,7 @@ Page({
   },
 
   /**
-   * 加载电影计划列表
+   * 加载影视计划列表
    */
   async loadMoviePlans() {
     if (!movieDataManager) {
@@ -226,7 +226,7 @@ Page({
     }
     
     try {
-      console.log('开始加载电影计划列表');
+      console.log('开始加载影视计划列表');
       
       // 使用dataManager加载数据（自动处理缓存和云端数据）
       const moviePlans = await movieDataManager.getData(false, false);
@@ -248,12 +248,12 @@ Page({
         hasMore: paginationState.hasMore
       });
       
-      console.log('电影计划列表加载完成:', formattedPlans.length);
+      console.log('影视计划列表加载完成:', formattedPlans.length);
       
 
       
     } catch (error) {
-      console.error('加载电影计划失败:', error);
+      console.error('加载影视计划失败:', error);
       wx.showToast({
         title: '加载失败，请重试',
         icon: 'error'
@@ -422,7 +422,7 @@ Page({
   },
 
   /**
-   * 添加电影计划
+   * 添加影视计划
    */
   async addMoviePlan() {
     const { movieInfo, userInfo, coupleId } = this.data;
@@ -435,7 +435,7 @@ Page({
     }
 
     if (!movieDataManager) {
-      console.warn('数据管理器未初始化，无法添加电影计划');
+      console.warn('数据管理器未初始化，无法添加影视计划');
       wx.showToast({
         title: '系统异常，请重试',
         icon: 'error'
@@ -446,7 +446,7 @@ Page({
     this.setData({ isAdding: true });
 
     try {
-      // 在添加电影计划时获取详细信息（包括海报）
+      // 在添加影视计划时获取详细信息（包括海报）
       let detailInfo = {};
       if (movieInfo.movieId) {
         try {
@@ -480,12 +480,12 @@ Page({
         coupleId: coupleId
       };
 
-      console.log('准备添加电影计划:', planData);
+      console.log('准备添加影视计划:', planData);
       
       // 使用dataManager发布数据
       const savedPlanData = await movieDataManager.publishData(planData);
       
-      console.log('电影计划添加成功，包含_id:', savedPlanData._id);
+      console.log('影视计划添加成功，包含_id:', savedPlanData._id);
 
       // 刷新列表
       await this.refreshData();
@@ -502,7 +502,7 @@ Page({
       });
 
     } catch (error) {
-      console.error('添加电影计划失败:', error);
+      console.error('添加影视计划失败:', error);
       wx.showToast({
         title: '添加失败，请重试',
         icon: 'error'
@@ -584,7 +584,7 @@ Page({
   },
 
   /**
-   * 删除电影计划
+   * 删除影视计划
    */
   async deleteMoviePlan() {
     if (!this.data.selectedMovie) return;
@@ -593,7 +593,7 @@ Page({
     const res = await new Promise((resolve) => {
       wx.showModal({
         title: '确认删除',
-        content: `确定要删除电影计划《${this.data.selectedMovie.movieName}》吗？`,
+        content: `确定要删除影视计划《${this.data.selectedMovie.movieName}》吗？`,
         confirmText: '删除',
         confirmColor: '#ff4757',
         success: (result) => resolve(result)
@@ -605,12 +605,12 @@ Page({
     try {
       const movieId = this.data.selectedMovie._id;
       
-      console.log('开始删除电影计划:', movieId);
+      console.log('开始删除影视计划:', movieId);
       
       // 使用dataManager删除数据
       await movieDataManager.deleteData(movieId);
       
-      console.log('电影计划删除成功');
+      console.log('影视计划删除成功');
       
       // 更新本地数据 - 从列表中移除已删除的项目
       const updatedPlans = this.data.moviePlans.filter(plan => plan._id !== movieId);
@@ -630,7 +630,7 @@ Page({
       });
       
     } catch (error) {
-      console.error('删除电影计划失败:', error);
+      console.error('删除影视计划失败:', error);
       wx.showToast({
         title: '删除失败，请重试',
         icon: 'error'

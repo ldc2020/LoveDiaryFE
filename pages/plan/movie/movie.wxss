@@ -7,32 +7,40 @@
   flex-direction: column;
 }
 
-/* 页面头部 - 调整高度避免内容被遮挡 */
+/* 页面头部 - 与情侣计划保持一致 */
 .page-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 100rpx 30rpx;
+  justify-content: space-between;
+  padding: 20rpx 30rpx;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10rpx);
 }
 
-.header-left, .header-right {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 32rpx;
-}
-
 .page-title {
-  font-size: 36rpx; /* 🎯 页面标题字体大小 - 可调整 */
+  font-size: 36rpx;
   font-weight: bold;
   color: white;
+}
+
+.smart-input-btn {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50rpx;
+  color: white;
+  font-size: 28rpx;
+}
+
+.smart-input-btn .iconfont {
+  margin-right: 8rpx;
+  font-size: 24rpx;
+}
+
+.smart-input-btn .iconfont {
+  margin-right: 8rpx;
+  font-size: 24rpx;
 }
 
 /* 电影内容区域 - 调整padding确保内容可见 */
@@ -653,4 +661,20 @@
 .confirm-btn[disabled] {
   background: #ccc;
   color: #999;
+}
+
+/* 响应式适配 - 与情侣计划保持一致 */
+@media (max-width: 750rpx) {
+  .page-header {
+    padding: 15rpx 20rpx;
+  }
+  
+  .page-title {
+    font-size: 32rpx;
+  }
+  
+  .smart-input-btn {
+    font-size: 26rpx;
+    padding: 14rpx 20rpx;
+  }
 }

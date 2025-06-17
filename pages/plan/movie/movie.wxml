@@ -1,13 +1,11 @@
 <!--pages/plan/movie/movie.wxml-->
 <view class="movie-container">
-  <!-- 页面头部 -->
+  <!-- 页面头部区域 -->
   <view class="page-header">
-    <view class="header-left" bindtap="goBack">
-      <text class="iconfont icon-back"></text>
-    </view>
-    <text class="page-title">电影计划</text>
-    <view class="header-right">
-      <!-- 移除原有的添加按钮 -->
+    <text class="page-title">🎬 影视计划</text>
+    <view class="smart-input-btn" bindtap="showAddModal">
+      <text class="iconfont icon-add"></text>
+      <text>智能添加</text>
     </view>
   </view>
 
@@ -33,8 +31,8 @@
     
     <view class="empty-state" wx:if="{{moviePlans.length === 0}}">
       <text class="empty-icon">🎬</text>
-      <text class="empty-text">暂无电影计划</text>
-      <text class="empty-tip">点击右下角添加新的电影计划</text>
+      <text class="empty-text">暂无影视计划</text>
+      <text class="empty-tip">点击右下角添加新的影视计划</text>
     </view>
   </scroll-view>
 
@@ -42,7 +40,7 @@
   <view class="modal-overlay" wx:if="{{showAddModal}}" bindtap="hideAddModal">
     <view class="add-modal add-modal-wide" catchtap="stopPropagation">
       <view class="modal-header">
-        <text class="modal-title">添加电影计划</text>
+        <text class="modal-title">添加影视计划</text>
         <view class="modal-close" bindtap="hideAddModal">
           <text class="close-icon">×</text>
         </view>
