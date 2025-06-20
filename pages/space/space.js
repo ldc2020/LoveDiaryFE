@@ -4,6 +4,8 @@
 //   加载skip条数-pageSize
 // 更新新数据
 //   查pageSize条数据库中的数据，和当前缓存数中的pageSize条做对比，看是否有新数据
+
+const CompressUtil = require('../../utils/compressUtil');
   
 Page({
   data: {
@@ -35,7 +37,9 @@ Page({
       lastCleanup: 0
     },
     backgroundImage: '', // 背景图片
-    isRefreshing: false // 刷新状态
+    isRefreshing: false, // 刷新状态
+    currentUserOpenid: null, // 当前用户openid
+    partnerId: null // 伴侣ID
   },
 
   onLoad() {
@@ -51,8 +55,14 @@ Page({
       return;
     }
 
+    // 获取当前用户openid和伴侣ID
+    const currentUserOpenid = wx.getStorageSync('openid');
+    const partnerId = wx.getStorageSync('partnerId');
+    
     this.setData({
-      coupleId: coupleId
+      coupleId: coupleId,
+      currentUserOpenid: currentUserOpenid,
+      partnerId: partnerId
     });
 
     // 加载背景图片
@@ -220,6 +230,64 @@ Page({
   },
 
   /**
+   * 根据用户ID获取用户头像
+   * @param {string} userId - 用户ID或openid
+   * @returns {string} 头像地址
+   */
+  getUserAvatarByUserId(userId) {
+    const { userInfo, partnerInfo, currentUserOpenid, partnerId } = this.data;
+    
+    // 如果是当前用户
+    if (userId === currentUserOpenid) {
+      if (userInfo && userInfo.localAvatarPath) {
+        // 检查本地文件是否存在
+        try {
+          const fs = wx.getFileSystemManager();
+          fs.accessSync(userInfo.localAvatarPath);
+          return userInfo.localAvatarPath;
+        } catch (error) {
+          // 本地文件不存在，使用云端头像
+          return userInfo.cloudAvatarUrl || userInfo.avatarUrl || './images/default-avatar.png';
+        }
+      }
+      return userInfo?.avatarUrl || './images/default-avatar.png';
+    }
+    
+    // 如果是伴侣
+    if (userId === partnerId) {
+      if (partnerInfo && partnerInfo.avatarUrl && !partnerInfo.avatarUrl.includes('127.0.0.1')) {
+        return partnerInfo.avatarUrl;
+      }
+      return partnerInfo?.cloudAvatarUrl || './images/default-avatar.png';
+    }
+    
+    // 其他用户使用默认头像
+    return './images/default-avatar.png';
+  },
+
+  /**
+   * 根据用户ID获取用户名
+   * @param {string} userId - 用户ID或openid
+   * @returns {string} 用户名
+   */
+  getUserNameByUserId(userId) {
+    const { userInfo, partnerInfo, currentUserOpenid, partnerId } = this.data;
+    
+    // 如果是当前用户
+    if (userId === currentUserOpenid) {
+      return userInfo?.nickName || '我';
+    }
+    
+    // 如果是伴侣
+    if (userId === partnerId) {
+      return partnerInfo?.nickName || 'TA';
+    }
+    
+    // 其他用户
+    return '未知用户';
+  },
+
+  /**
    * 获取用户信息
    */
   getUserInfo() {
@@ -276,17 +344,22 @@ Page({
 
   /**
    * 获取情侣信息
+   * 优先使用本地缓存，避免覆盖index.js中正确设置的本地头像路径
    */
   getPartnerInfo() {
     return new Promise((resolve, reject) => {
       // 先尝试从缓存获取
       const cachedPartnerInfo = wx.getStorageSync('partnerInfo');
       if (cachedPartnerInfo) {
-        resolve(cachedPartnerInfo);
-        return;
+        // 检查缓存是否完整（包含本地头像路径）
+        if (cachedPartnerInfo.avatarUrl && cachedPartnerInfo.cloudAvatarUrl) {
+          resolve(cachedPartnerInfo);
+          return;
+        }
       }
+      
       console.log('获取情侣信息'+partnerId);
-      // 如果缓存中没有，则从云数据库获取
+      // 如果缓存中没有或不完整，则从云数据库获取
       const db = wx.cloud.database();
       const partnerId = wx.getStorageSync('partnerId');
       console.log('获取情侣信息：'+partnerId);
@@ -301,12 +374,21 @@ Page({
          ]
        }).get().then(res => {
         if (res.data.length > 0) {
+          // 如果有缓存但不完整，保留已有的本地头像路径
+          const existingPartnerInfo = cachedPartnerInfo || {};
           const partnerInfo = {
             nickName: res.data[0].nickName,
-            avatarUrl: res.data[0].avatarUrl, // 这里应该是本地缓存路径，但space.js可能需要进一步优化
-            cloudAvatarUrl: res.data[0].avatarUrl // 云端头像URL，用于比较是否需要更新
+            // 保留已有的本地头像路径，如果没有则使用云端地址
+            avatarUrl: existingPartnerInfo.avatarUrl || res.data[0].avatarUrl,
+            // 更新云端头像URL
+            cloudAvatarUrl: res.data[0].avatarUrl
           };
-          wx.setStorageSync('partnerInfo', partnerInfo);
+          
+          // 只有在缓存不存在或不完整时才更新缓存
+          if (!cachedPartnerInfo || !cachedPartnerInfo.avatarUrl || !cachedPartnerInfo.cloudAvatarUrl) {
+            wx.setStorageSync('partnerInfo', partnerInfo);
+          }
+          
           resolve(partnerInfo);
         } else {
           reject(new Error('未找到情侣信息'));
@@ -333,14 +415,7 @@ Page({
       return;
     }
     
-    // 添加调用日志，便于调试重复调用问题
-    console.log('getMoments 被调用:', {
-      isRefresh,
-      isLoadMore,
-      currentMomentsCount: this.data.moments.length,
-      loading: this.data.loading,
-      loadingMore: this.data.loadingMore
-    });
+
     
     if (isLoadMore) {
       this.setData({ loadingMore: true });
@@ -447,8 +522,6 @@ Page({
             loading: false,
             hasMore: hasMore
           });
-          // 添加日志输出当前moments数据的第一个元素的images信息
-          console.log('当前moments数据:', this.data.moments[0]?.images);
         }
       }
     } catch (error) {
@@ -536,13 +609,11 @@ Page({
       }
       // 每一条id都对比
       for (let id of cloudIds) {
-        console.log('checkForNewMoments--每一条id都对比');
         if (!cachedIds.has(id)) {
           return true;
         }
       }
       
-      console.log('checkForNewMoments--false');
       return false;
     } catch (error) {
       console.error('检查新数据时出错:', error);
@@ -564,86 +635,13 @@ Page({
    */
   async addUserAvatarsToMoments(moments) {
     try {
-      // 获取当前用户和情侣的最新信息
-      const userInfo = wx.getStorageSync('userInfo');
-      const currentOpenid = userInfo?.openid;
-      const partnerId = wx.getStorageSync('partnerId');
-      
-      if (!currentOpenid) {
-        console.error('未找到当前用户openid');
-        return moments;
-      }
-      
-      // 直接从本地存储获取用户信息，提高性能（根据用户反馈优化）
-      const userMap = {};
-      
-      // 获取本地存储的用户信息
-      const localUserInfo = wx.getStorageSync('userInfo');
-      const partnerInfo = wx.getStorageSync('partnerInfo');
-      
-      // 处理当前用户信息
-      if (localUserInfo) {
-        let currentUserAvatar = './images/default-avatar.png';
-        if (localUserInfo.localAvatarPath) {
-          currentUserAvatar = localUserInfo.localAvatarPath;
-        }
-        
-        userMap[currentOpenid] = {
-          avatar: currentUserAvatar,
-          name: localUserInfo.nickName || '我'
-        };
-      }
-      
-      // 处理伴侣信息
-      if (partnerInfo && partnerId) {
-        let partnerAvatar = './images/default-avatar.png';
-        
-        // 优先使用本地缓存的头像，检查是否为无效的127.0.0.1地址
-        if (partnerInfo.avatarUrl && !partnerInfo.avatarUrl.includes('127.0.0.1')) {
-          partnerAvatar = partnerInfo.avatarUrl;
-        }
-        // 如果本地头像不可用，尝试使用云端头像
-        else if (partnerInfo.cloudAvatarUrl) {
-          // 异步下载并缓存云端头像
-          this.downloadAndCachePartnerAvatar(partnerInfo.cloudAvatarUrl, partnerId);
-          // 暂时使用云端URL，下载完成后会自动更新
-          partnerAvatar = partnerInfo.cloudAvatarUrl;
-        }
-        
-        userMap[partnerId] = {
-          avatar: partnerAvatar,
-          name: partnerInfo.nickName || 'TA'
-        };
-      }
-      
-      // 为每个瞬间添加用户信息，并处理评论
-      return moments.map(moment => {
-        const userInfo = userMap[moment._openid];
-        
-        // 处理评论，为每个评论添加最新的用户信息
-        const commentsWithUserInfo = (moment.comments || []).map(comment => {
-          const commentUserInfo = userMap[comment._openid];
-          return {
-            ...comment,
-            userAvatar: commentUserInfo?.avatar || './images/default-avatar.png',
-            userName: commentUserInfo?.name || '未知用户'
-          };
-        });
-        
-        return {
-          ...moment,
-          userAvatar: userInfo?.avatar || './images/default-avatar.png',
-          userName: userInfo?.name || '未知用户',
-          comments: commentsWithUserInfo
-        };
-      });
+      // 现在渲染层直接从userInfo和partnerInfo获取头像和用户名
+      // 此函数主要用于保持数据结构的完整性
+      // 不再需要添加userAvatar和userName字段到moments数据中
+      return moments;
     } catch (error) {
-      console.error('添加用户头像失败:', error);
-      return moments.map(moment => ({
-        ...moment,
-        userAvatar: './images/default-avatar.png',
-        userName: '未知用户'
-      }));
+      console.error('处理瞬间数据失败:', error);
+      return moments;
     }
   },
 
@@ -1225,9 +1223,7 @@ Page({
         }
         
         console.log(`孤儿图片文件清理完成，共清理${orphanedImageIds.length}个文件`);
-      } else {
-        console.log('未发现孤儿图片文件');
-      }
+      } 
     } catch (error) {
       console.error('清理孤儿图片文件失败:', error);
     }
@@ -1519,107 +1515,19 @@ Page({
   },
 
   /**
-
-  * 压缩图片（如果超过1MB）
+   * 压缩图片（如果超过1MB）
    * @param {string} imagePath - 图片路径
    * @returns {Promise<string>} - 压缩后的图片路径
    */
   async compressImageIfNeeded(imagePath) {
     try {
-      // 获取图片信息
-      const imageInfo = await new Promise((resolve, reject) => {
-        wx.getImageInfo({
-          src: imagePath,
-          success: resolve,
-          fail: reject
-        });
-      });
-
-      // 获取文件信息
-       const fileInfo = await new Promise((resolve, reject) => {
-         wx.getFileSystemManager().getFileInfo({
-           filePath: imagePath,
-           success: resolve,
-           fail: reject
-         });
-       });
-
-      const fileSizeInMB = fileInfo.size / (1024 * 1024);
-      console.log(`图片大小: ${fileSizeInMB.toFixed(2)}MB`);
-
-      // 如果图片小于等于1MB，直接返回原路径
-      if (fileSizeInMB <= 1) {
-        console.log('图片大小符合要求，无需压缩');
-        return imagePath;
-      }
-
-      console.log('图片超过1MB，开始压缩...');
-
-      // 计算压缩质量，目标是压缩到1MB以下
-      // 压缩质量范围：0.1 - 0.9
-      let quality = Math.max(0.1, Math.min(0.9, 1 / fileSizeInMB));
+      // 使用统一的压缩工具，目标大小1MB
+      const result = await CompressUtil.compressImage(imagePath, 100 * 1024);
       
-      // 如果图片很大，进一步降低质量
-      if (fileSizeInMB > 5) {
-        quality = Math.max(0.1, quality * 0.6);
-      } else if (fileSizeInMB > 3) {
-        quality = Math.max(0.1, quality * 0.8);
-      }
-
-      console.log(`使用压缩质量: ${quality}`);
-
-      // 压缩图片
-      const compressResult = await new Promise((resolve, reject) => {
-        wx.compressImage({
-          src: imagePath,
-          quality: Math.round(quality * 100), // 微信API需要0-100的整数
-          success: resolve,
-          fail: reject
-        });
-      });
-
-      // 检查压缩后的文件大小
-       const compressedFileInfo = await new Promise((resolve, reject) => {
-         wx.getFileSystemManager().getFileInfo({
-           filePath: compressResult.tempFilePath,
-           success: resolve,
-           fail: reject
-         });
-       });
-
-      const compressedSizeInMB = compressedFileInfo.size / (1024 * 1024);
-      console.log(`压缩后大小: ${compressedSizeInMB.toFixed(2)}MB`);
-
-      // 如果压缩后仍然超过1MB，进行二次压缩
-      if (compressedSizeInMB > 1 && quality > 0.1) {
-        console.log('进行二次压缩...');
-        const secondQuality = Math.max(0.1, quality * 0.5);
-        
-        const secondCompressResult = await new Promise((resolve, reject) => {
-          wx.compressImage({
-            src: compressResult.tempFilePath,
-            quality: Math.round(secondQuality * 100),
-            success: resolve,
-            fail: reject
-          });
-        });
-
-        const finalFileInfo = await new Promise((resolve, reject) => {
-           wx.getFileSystemManager().getFileInfo({
-             filePath: secondCompressResult.tempFilePath,
-             success: resolve,
-             fail: reject
-           });
-         });
-
-        const finalSizeInMB = finalFileInfo.size / (1024 * 1024);
-        console.log(`二次压缩后大小: ${finalSizeInMB.toFixed(2)}MB`);
-
-        return secondCompressResult.tempFilePath;
-      }
-
-      return compressResult.tempFilePath;
-
+      console.log(`原始大小: ${CompressUtil.formatFileSize(result.originalSize)}`);
+      console.log(`压缩后大小: ${CompressUtil.formatFileSize(result.compressedSize)}`);
+      
+      return result.tempFilePath;
     } catch (error) {
       console.error('图片压缩失败:', error);
       // 压缩失败时返回原图片路径
@@ -1821,7 +1729,18 @@ Page({
   },
 
   /**
-   * 点赞
+   * 点赞批量统计队列 - 用于收集10秒内的点赞操作
+   * 格式: { momentId: { count: number, momentIndex: number } }
+   */
+  likeQueue: {},
+  
+  /**
+   * 点赞批量提交定时器
+   */
+  likeBatchTimer: null,
+  
+  /**
+   * 点赞 - 优化版本，批量统计减少数据库访问
    */
   async toggleLike(e) {
     const momentId = e.currentTarget.dataset.id;
@@ -1835,38 +1754,10 @@ Page({
     }
     
     try {
-      const db = wx.cloud.database();
-      const _ = db.command;
-      
-      // 先获取当前文档，检查likes字段类型
-      const doc = await db.collection('ld_moments').doc(momentId).get();
-      const currentLikes = doc.data.likes;
-      
-      // 如果likes是数组类型，先重置为0，然后再增加1
-      if (Array.isArray(currentLikes)) {
-        await db.collection('ld_moments').doc(momentId).update({
-          data: {
-            likes: 1 // 直接设置为1
-          }
-        });
-      } else {
-        // 如果likes是数字类型，正常使用$inc操作
-        await db.collection('ld_moments').doc(momentId).update({
-          data: {
-            likes: _.inc(1)
-          }
-        });
-      }
-      
-      // 立即更新本地数据
+      // 立即更新本地UI，提升用户体验
       const moments = this.data.moments;
       if (moments[momentIndex]) {
-        // 如果原来是数组类型，重置为1；否则正常加1
-        if (Array.isArray(moments[momentIndex].likes)) {
-          moments[momentIndex].likes = 1;
-        } else {
-          moments[momentIndex].likes = (moments[momentIndex].likes || 0) + 1;
-        }
+        moments[momentIndex].likes = (moments[momentIndex].likes || 0) + 1;
         moments[momentIndex].showHearts = true;
         this.setData({ moments });
         
@@ -1879,6 +1770,9 @@ Page({
         }, 2000);
       }
       
+      // 添加到批量统计队列
+      this.addToLikeQueue(momentId, momentIndex);
+      
       // 更新本地缓存
       this.updateLocalCache(moments);
       
@@ -1888,6 +1782,164 @@ Page({
         title: '点赞失败',
         icon: 'none'
       });
+    }
+  },
+  
+  /**
+   * 添加点赞到批量统计队列
+   * @param {string} momentId - 动态ID
+   * @param {number} momentIndex - 动态在数组中的索引
+   */
+  addToLikeQueue(momentId, momentIndex) {
+    // 初始化或累加点赞数
+    if (!this.likeQueue[momentId]) {
+      this.likeQueue[momentId] = {
+        count: 1,
+        momentIndex: momentIndex
+      };
+    } else {
+      this.likeQueue[momentId].count += 1;
+    }
+    
+    console.log(`点赞队列更新: ${momentId} -> ${this.likeQueue[momentId].count}次`);
+    
+    // 如果没有定时器在运行，启动10秒批量提交定时器
+    if (!this.likeBatchTimer) {
+      this.likeBatchTimer = setTimeout(() => {
+        this.batchSubmitLikes();
+      }, 10000); // 10秒后批量提交
+      
+      console.log('启动点赞批量提交定时器，10秒后执行');
+    }
+  },
+  
+  /**
+   * 批量提交点赞数据到云端数据库
+   * 注意：微信小程序云开发不支持 db.batch()，使用循环逐个更新
+   */
+  async batchSubmitLikes() {
+    if (Object.keys(this.likeQueue).length === 0) {
+      console.log('点赞队列为空，跳过批量提交');
+      this.likeBatchTimer = null;
+      return;
+    }
+    
+    console.log('开始批量提交点赞数据:', this.likeQueue);
+    
+    try {
+      const db = wx.cloud.database();
+      const _ = db.command;
+      let successCount = 0;
+      let failCount = 0;
+      
+      // 遍历点赞队列，逐个更新每个动态
+      for (const [momentId, likeData] of Object.entries(this.likeQueue)) {
+        try {
+          // 先检查文档的likes字段类型
+          const doc = await db.collection('ld_moments').doc(momentId).get();
+          const currentLikes = doc.data.likes;
+          
+          let updateResult;
+          if (Array.isArray(currentLikes)) {
+            // 如果是数组类型，直接设置为累计数量
+            updateResult = await db.collection('ld_moments').doc(momentId).update({
+              data: {
+                likes: likeData.count
+              }
+            });
+          } else {
+            // 如果是数字类型，使用原子操作递增
+            updateResult = await db.collection('ld_moments').doc(momentId).update({
+              data: {
+                likes: _.inc(likeData.count)
+              }
+            });
+          }
+          
+          if (updateResult.stats.updated > 0) {
+            successCount++;
+            console.log(`点赞更新成功: ${momentId} +${likeData.count}`);
+          } else {
+            failCount++;
+            console.warn(`点赞更新失败: ${momentId} - 未找到文档或无权限`);
+          }
+          
+        } catch (docError) {
+          failCount++;
+          console.error(`点赞更新失败 ${momentId}:`, docError);
+          
+          // 如果获取文档失败，尝试使用默认inc操作
+          try {
+            const fallbackResult = await db.collection('ld_moments').doc(momentId).update({
+              data: {
+                likes: _.inc(likeData.count)
+              }
+            });
+            
+            if (fallbackResult.stats.updated > 0) {
+              successCount++;
+              failCount--; // 回退失败计数
+              console.log(`点赞更新成功(fallback): ${momentId} +${likeData.count}`);
+            }
+          } catch (fallbackError) {
+            console.error(`点赞fallback更新也失败 ${momentId}:`, fallbackError);
+          }
+        }
+      }
+      
+      console.log(`批量点赞提交完成: 成功${successCount}个, 失败${failCount}个`);
+      
+      // 根据成功失败情况显示不同提示
+      if (successCount > 0) {
+        
+      } else {
+        // 全部失败，回滚本地UI状态
+        this.rollbackLocalLikes();
+        wx.showToast({
+          title: '点赞同步失败',
+          icon: 'none'
+        });
+      }
+      
+    } catch (error) {
+      console.error('批量点赞提交异常:', error);
+      
+      // 提交失败时，回滚本地UI状态
+      this.rollbackLocalLikes();
+      
+      wx.showToast({
+        title: '点赞同步失败',
+        icon: 'none'
+      });
+    } finally {
+      // 清空队列和定时器
+      this.likeQueue = {};
+      this.likeBatchTimer = null;
+      console.log('点赞队列已清空，定时器已重置');
+    }
+  },
+  
+  /**
+   * 回滚本地点赞状态（当批量提交失败时）
+   */
+  rollbackLocalLikes() {
+    try {
+      const moments = this.data.moments;
+      
+      // 遍历失败的点赞队列，回滚本地状态
+      for (const [momentId, likeData] of Object.entries(this.likeQueue)) {
+        const moment = moments.find(m => m._id === momentId);
+        if (moment) {
+          moment.likes = Math.max(0, (moment.likes || 0) - likeData.count);
+          console.log(`回滚点赞: ${momentId} -${likeData.count}`);
+        }
+      }
+      
+      this.setData({ moments });
+      this.updateLocalCache(moments);
+      
+    } catch (error) {
+      console.error('回滚本地点赞状态失败:', error);
     }
   },
 

@@ -1,3 +1,5 @@
+const CompressUtil = require('./compressUtil');
+
 /**
  * 通用数据管理模板
  * 提供存储、刷新、懒加载、智能清理功能
@@ -609,19 +611,13 @@ class DataManager {
    * @returns {Promise<string>} 压缩后的图片路径
    */
   async compressImage(imagePath) {
-    return new Promise((resolve, reject) => {
-      wx.compressImage({
-        src: imagePath,
-        quality: 80, // 压缩质量
-        success: (res) => {
-          resolve(res.tempFilePath);
-        },
-        fail: (error) => {
-          console.warn(`${this.config.cachePrefix}: 图片压缩失败，使用原图`, error);
-          resolve(imagePath); // 压缩失败时使用原图
-        }
-      });
-    });
+    try {
+      const result = await CompressUtil.compressImage(imagePath);
+      return result.tempFilePath;
+    } catch (error) {
+      console.warn(`${this.config.cachePrefix}: 图片压缩失败，使用原图`, error);
+      return imagePath; // 压缩失败时使用原图
+    }
   }
   
   /**

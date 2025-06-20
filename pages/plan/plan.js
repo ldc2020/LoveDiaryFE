@@ -7,6 +7,7 @@
 
 // 日志记录 - 微信小程序环境使用console替代winston
 const app = getApp();
+const CompressUtil = require('../../utils/compressUtil');
 
 // 定义常量 - plan页面只显示计划数量，不需要分页和云端更新
 // 数据由各个具体计划页面维护和更新
@@ -551,15 +552,14 @@ Page({
    * @param {string} imagePath 原图路径
    * @returns {Promise<string>} 压缩后的图片路径
    */
-  compressImage(imagePath) {
-    return new Promise((resolve, reject) => {
-      wx.compressImage({
-        src: imagePath,
-        quality: 80,
-        success: res => resolve(res.tempFilePath),
-        fail: err => reject(err)
-      });
-    });
+  async compressImage(imagePath) {
+    try {
+      const result = await CompressUtil.compressImage(imagePath);
+      return result.tempFilePath;
+    } catch (error) {
+      console.error('图片压缩失败:', error);
+      return imagePath;
+    }
   },
 
   /**

@@ -14,6 +14,7 @@
  */
 
 const app = getApp();
+const CompressUtil = require('./compressUtil');
 
 class MovieApiService {
   constructor() {
@@ -301,8 +302,7 @@ class MovieApiService {
   }
 
   /**
-   * 压缩图片到指定大小（50KB以下）
-   * 采用递减质量的方式，确保文件大小符合要求
+   * 压缩图片到指定大小
    * @param {string} filePath - 原始文件路径
    * @returns {Promise<string>} 压缩后文件路径
    */
@@ -310,47 +310,16 @@ class MovieApiService {
     try {
       console.log('[MovieApiService] 开始压缩图片:', filePath);
       
-      let compressedPath = filePath;
-      let quality = 80; // 初始压缩质量
-      let fileSize = await this.getFileSize(filePath);
+      const result = await CompressUtil.compressImage(filePath, this.config.maxImageSize);
       
-      console.log('[MovieApiService] 原始文件大小:', this.formatFileSize(fileSize));
+      console.log('[MovieApiService] 图片压缩完成:', {
+        原始路径: filePath,
+        压缩后路径: result.tempFilePath,
+        原始大小: CompressUtil.formatFileSize(result.originalSize),
+        压缩后大小: CompressUtil.formatFileSize(result.compressedSize)
+      });
       
-      // 如果文件已经小于50KB，直接返回
-      if (fileSize <= this.config.maxImageSize) {
-        console.log('[MovieApiService] 文件已符合大小要求，无需压缩');
-        return filePath;
-      }
-      
-      // 循环压缩直到文件大小符合要求或质量过低
-      while (fileSize > this.config.maxImageSize && quality >= 20) {
-        console.log(`[MovieApiService] 压缩图片，质量: ${quality}%`);
-        
-        const result = await new Promise((resolve, reject) => {
-          wx.compressImage({
-            src: filePath,
-            quality: quality,
-            success: resolve,
-            fail: reject
-          });
-        });
-        
-        compressedPath = result.tempFilePath;
-        fileSize = await this.getFileSize(compressedPath);
-        
-        console.log(`[MovieApiService] 压缩后大小: ${this.formatFileSize(fileSize)}`);
-        
-        // 如果达到目标大小，退出循环
-        if (fileSize <= this.config.maxImageSize) {
-          break;
-        }
-        
-        // 降低压缩质量
-        quality -= 10;
-      }
-      
-      console.log(`[MovieApiService] 图片压缩完成，最终大小: ${this.formatFileSize(fileSize)}`);
-      return compressedPath;
+      return result.tempFilePath;
     } catch (error) {
       console.error('[MovieApiService] 图片压缩失败:', error);
       throw new Error(`图片压缩失败: ${error.message}`);

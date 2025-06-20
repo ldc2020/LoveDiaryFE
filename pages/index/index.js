@@ -1,6 +1,8 @@
 // index.js
 // 自己的头像保存在- 存储位置 ： wx.env.USER_DATA_PATH 目录下
 // - 文件命名 ： avatar_${用户ID}_${时间戳}.jpg
+const CompressUtil = require('../../utils/compressUtil');
+const CloudConfig = require('../../utils/cloudConfig');
 const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
 
 Page({
@@ -97,6 +99,19 @@ Page({
         // 用户已存在，更新用户信息
         console.log('用户已存在，更新用户信息');
         const existingUser = userQuery.data[0];
+        // 如果用户已存在，删除云端头像
+        // 删除旧的云端头像
+        if (existingUser.avatarUrl) {
+          try {
+            await wx.cloud.deleteFile({
+              fileList: [existingUser.avatarUrl]
+            });
+            console.log('已删除旧的云端头像');
+          } catch (error) {
+            console.error('删除旧云端头像失败:', error);
+            // 删除失败不影响后续流程
+          }
+        }
         await this.updateUserInfo(db, existingUser, openid);
       } else {
         // 用户不存在，创建新用户
@@ -254,6 +269,9 @@ Page({
 
   /**
    * 下载并缓存头像到本地
+   * @param {string} cloudAvatarUrl 云端头像URL
+   * @param {string} userId 用户ID
+   * @returns {string} 本地头像路径
    */
   async downloadAndCacheAvatar(cloudAvatarUrl, userId) {
     try {
@@ -262,19 +280,34 @@ Page({
         return cloudAvatarUrl;
       }
       
-      // 检查本地是否已有缓存
-      const cacheKey = `avatar_${userId}`;
-      const cachedPath = wx.getStorageSync(cacheKey);
-      if (cachedPath) {
-        // 检查缓存文件是否存在
-        try {
-          const fs = wx.getFileSystemManager();
-          fs.accessSync(cachedPath);
-          console.log('使用缓存头像:', cachedPath);
-          return cachedPath;
-        } catch (e) {
-          // 缓存文件不存在，清除缓存记录
-          wx.removeStorageSync(cacheKey);
+      // 检查partnerInfo中的缓存状态
+      const partnerInfo = wx.getStorageSync('partnerInfo');
+      if (partnerInfo && userId !== wx.getStorageSync('userInfo')?.openid) {
+        // 如果是伴侣头像，检查partnerInfo中的缓存
+        if (partnerInfo.cloudAvatarUrl === cloudAvatarUrl && partnerInfo.avatarUrl) {
+          // 检查缓存文件是否存在
+          try {
+            const fs = wx.getFileSystemManager();
+            fs.accessSync(partnerInfo.avatarUrl);
+            console.log('使用partnerInfo缓存头像:', partnerInfo.avatarUrl);
+            return partnerInfo.avatarUrl;
+          } catch (e) {
+            // 缓存文件不存在，需要重新下载
+            console.log('partnerInfo缓存文件不存在，重新下载');
+          }
+        }
+      } else {
+        // 用户自己的头像，检查userInfo中的缓存
+        const userInfo = wx.getStorageSync('userInfo');
+        if (userInfo && userInfo.localAvatarPath && userInfo.cloudAvatarUrl === cloudAvatarUrl) {
+          try {
+            const fs = wx.getFileSystemManager();
+            fs.accessSync(userInfo.localAvatarPath);
+            console.log('使用userInfo缓存头像:', userInfo.localAvatarPath);
+            return userInfo.localAvatarPath;
+          } catch (e) {
+            console.log('userInfo缓存文件不存在，重新下载');
+          }
         }
       }
       
@@ -295,8 +328,22 @@ Page({
         });
       });
       
-      // 缓存本地路径
-      wx.setStorageSync(cacheKey, saveResult.savedFilePath);
+      // 更新对应的缓存信息
+      if (userId !== wx.getStorageSync('userInfo')?.openid) {
+        // 更新partnerInfo中的头像缓存
+        const currentPartnerInfo = wx.getStorageSync('partnerInfo') || {};
+        currentPartnerInfo.avatarUrl = saveResult.savedFilePath;
+        currentPartnerInfo.cloudAvatarUrl = cloudAvatarUrl;
+        wx.setStorageSync('partnerInfo', currentPartnerInfo);
+        console.log('已更新partnerInfo头像缓存');
+      } else {
+        // 更新userInfo中的头像缓存
+        const currentUserInfo = wx.getStorageSync('userInfo') || {};
+        currentUserInfo.localAvatarPath = saveResult.savedFilePath;
+        currentUserInfo.cloudAvatarUrl = cloudAvatarUrl;
+        wx.setStorageSync('userInfo', currentUserInfo);
+        console.log('已更新userInfo头像缓存');
+      }
       
       console.log('头像下载并缓存成功:', saveResult.savedFilePath);
       return saveResult.savedFilePath;
@@ -411,8 +458,9 @@ Page({
       // 先查找用户是否存在，如果存在则删除旧的云端头像
       await this.deleteOldCloudAvatar(openid);
       
-      // 生成云端文件路径（使用固定文件名确保唯一性）
-      const cloudPath = `avatars/${openid}_avatar.jpg`;
+      // 生成云端文件路径（添加时间戳确保每次更新都有不同的URL）
+      const timestamp = Date.now();
+      const cloudPath = CloudConfig.buildAvatarUploadPath(openid, timestamp);
       
       console.log('开始上传头像到云端:', { localFilePath, cloudPath });
       
@@ -434,40 +482,25 @@ Page({
 
   /**
    * 删除用户旧的云端头像
+   * 尝试使用通配符方式删除以openid开头的头像文件
    */
   async deleteOldCloudAvatar(openid) {
     try {
-      console.log('开始查找并删除旧的云端头像:', openid);
+      console.log('开始使用通配符删除旧的云端头像:', openid);
+      // 尝试使用通配符删除文件（注意：微信云存储可能不支持此功能）
+      const wildcardPath = CloudConfig.buildAvatarWildcardPath(openid);
       
-      // 查询数据库中的用户信息
-      const db = wx.cloud.database();
-      const userQuery = await db.collection('ld_user_info').where({
-        openid: openid
-      }).get();
-      
-      if (userQuery.data && userQuery.data.length > 0) {
-        const userData = userQuery.data[0];
-        const oldCloudAvatarUrl = userData.avatarUrl;
+      try {
+        // 尝试通配符删除
+        await wx.cloud.deleteFile({
+          fileList: [wildcardPath]
+        });
         
-        // 如果存在云端头像地址且不是默认头像，则删除
-        if (oldCloudAvatarUrl && 
-            oldCloudAvatarUrl !== defaultAvatarUrl && 
-            oldCloudAvatarUrl.startsWith('cloud://')) {
-          
-          console.log('找到旧的云端头像，准备删除:', oldCloudAvatarUrl);
-          
-          // 删除云存储中的旧头像文件
-          await wx.cloud.deleteFile({
-            fileList: [oldCloudAvatarUrl]
-          });
-          
-          console.log('旧云端头像删除成功:', oldCloudAvatarUrl);
-        } else {
-          console.log('用户没有需要删除的云端头像');
-        }
-      } else {
-        console.log('用户不存在，无需删除旧头像');
+      } catch (wildcardError) {
+        console.log('通配符删除失败，错误信息:', wildcardError.message);
       }
+      
+      console.log('旧云端头像清理完成');
       
     } catch (error) {
       console.error('删除旧云端头像失败:', error);
@@ -529,114 +562,7 @@ Page({
    * 压缩图片到指定大小（默认100k左右）
    */
   async compressImage(tempFilePath, targetSize = 100 * 1024) {
-    try {
-      // 获取原始图片信息
-      const fs = wx.getFileSystemManager();
-      const originalStats = await new Promise((resolve, reject) => {
-        fs.stat({
-          path: tempFilePath,
-          success: resolve,
-          fail: reject
-        });
-      });
-      
-      const originalSize = originalStats.size;
-      console.log('原始图片大小:', this.formatFileSize(originalSize));
-      
-      // 如果原始图片已经小于目标大小，直接返回
-      if (originalSize <= targetSize) {
-        console.log('图片已经足够小，无需压缩');
-        return {
-          tempFilePath: tempFilePath,
-          originalSize: originalSize,
-          compressedSize: originalSize
-        };
-      }
-      
-      // 计算压缩质量（基于文件大小比例）
-      let quality = Math.min(90, Math.max(20, Math.floor((targetSize / originalSize) * 100)));
-      
-      console.log('开始压缩图片，质量:', quality);
-      
-      // 压缩图片
-      const compressResult = await new Promise((resolve, reject) => {
-        wx.compressImage({
-          src: tempFilePath,
-          quality: quality,
-          success: resolve,
-          fail: reject
-        });
-      });
-      
-      // 检查压缩后的文件大小
-      const compressedStats = await new Promise((resolve, reject) => {
-        fs.stat({
-          path: compressResult.tempFilePath,
-          success: resolve,
-          fail: reject
-        });
-      });
-      
-      const compressedSize = compressedStats.size;
-      console.log('压缩后图片大小:', this.formatFileSize(compressedSize));
-      
-      // 如果压缩后仍然太大，进行二次压缩
-      if (compressedSize > targetSize && quality > 20) {
-        quality = Math.max(20, Math.floor(quality * 0.7));
-        console.log('文件仍然过大，进行二次压缩，质量:', quality);
-        
-        const secondCompressResult = await new Promise((resolve, reject) => {
-          wx.compressImage({
-            src: compressResult.tempFilePath,
-            quality: quality,
-            success: resolve,
-            fail: reject
-          });
-        });
-        
-        const finalStats = await new Promise((resolve, reject) => {
-          fs.stat({
-            path: secondCompressResult.tempFilePath,
-            success: resolve,
-            fail: reject
-          });
-        });
-        
-        console.log('二次压缩后图片大小:', this.formatFileSize(finalStats.size));
-        
-        return {
-          tempFilePath: secondCompressResult.tempFilePath,
-          originalSize: originalSize,
-          compressedSize: finalStats.size
-        };
-      }
-      
-      return {
-        tempFilePath: compressResult.tempFilePath,
-        originalSize: originalSize,
-        compressedSize: compressedSize
-      };
-      
-    } catch (error) {
-      console.error('压缩图片失败:', error);
-      // 压缩失败时返回原图片
-      return {
-        tempFilePath: tempFilePath,
-        originalSize: 0,
-        compressedSize: 0
-      };
-    }
-  },
-
-  /**
-   * 格式化文件大小显示
-   */
-  formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return await CompressUtil.compressImage(tempFilePath, targetSize);
   },
 
   /**
