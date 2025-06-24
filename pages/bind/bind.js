@@ -1,4 +1,8 @@
 
+// 引入工具类
+const StorageManager = require('../../utils/storageManager');
+const LoadingManager = require('../../utils/loadingManager');
+
 Page({
   data: {
     bindStep: 1, // 当前步骤：1-获取用户信息，2-显示邀请码，3-输入对方邀请码
@@ -103,16 +107,16 @@ Page({
           }).get();
           
           // 保存绑定状态到本地
-          wx.setStorageSync('bindStatus', 'bound');
-          wx.setStorageSync('coupleId', myUserInfo.coupleId);
-          wx.setStorageSync('partnerId', myUserInfo.partnerId);
+          StorageManager.setStorage('bindStatus', 'bound');
+          StorageManager.setStorage('coupleId', myUserInfo.coupleId);
+          StorageManager.setStorage('partnerId', myUserInfo.partnerId);
           
           // 保存伴侣头像信息到本地
           if (partnerQuery.data.length > 0) {
             const partnerInfo = partnerQuery.data[0];
             // 下载并缓存伴侣头像
             const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
-            wx.setStorageSync('partnerInfo', {
+            StorageManager.setStorage('partnerInfo', {
               nickName: partnerInfo.nickName,
               avatarUrl: localAvatarUrl, // 本地缓存的头像路径
               cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
@@ -121,7 +125,7 @@ Page({
           }
           
           // 显示绑定成功提示
-          wx.showToast({
+          LoadingManager.showToast({
             title: '对方已注册，绑定成功！',
             icon: 'success',
             duration: 2000
@@ -129,9 +133,7 @@ Page({
           
           // 延迟跳转到首页
           setTimeout(() => {
-            wx.reLaunch({
-              url: '/pages/home/home'
-            });
+            LoadingManager.navigateTo('/pages/home/home', true);
           }, 2000);
         }
       }
@@ -153,15 +155,13 @@ Page({
    * checkUserStatus->checkIfAlreadyBound->startBindMonitoring->checkBindingStatus
    */
   async checkUserStatus() {
-    const userInfo = wx.getStorageSync('userInfo');
-    const bindStatus = wx.getStorageSync('bindStatus');
-    const myCode = wx.getStorageSync('myInviteCode');
+    const userInfo = StorageManager.getStorage('userInfo');
+    const bindStatus = StorageManager.getStorage('bindStatus');
+    const myCode = StorageManager.getStorage('myInviteCode');
     
     if (bindStatus === 'bound') {
       // 已绑定，跳转到首页
-      wx.reLaunch({
-        url: '/pages/home/home'
-      });
+      LoadingManager.navigateTo('/pages/home/home', true);
       return;
     }
     
@@ -219,16 +219,16 @@ Page({
           }).get();
           
           // 保存绑定状态到本地
-          wx.setStorageSync('bindStatus', 'bound');
-          wx.setStorageSync('coupleId', myUserInfo.coupleId);
-          wx.setStorageSync('partnerId', myUserInfo.partnerId);
+          StorageManager.setStorage('bindStatus', 'bound');
+          StorageManager.setStorage('coupleId', myUserInfo.coupleId);
+          StorageManager.setStorage('partnerId', myUserInfo.partnerId);
           
           // 保存伴侣头像信息到本地
           if (partnerQuery.data.length > 0) {
             const partnerInfo = partnerQuery.data[0];
             // 下载并缓存伴侣头像
             const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
-            wx.setStorageSync('partnerInfo', {
+            StorageManager.setStorage('partnerInfo', {
               nickName: partnerInfo.nickName,
               avatarUrl: localAvatarUrl, // 本地缓存的头像路径
               cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
@@ -237,7 +237,7 @@ Page({
           }
           
           // 显示绑定成功提示
-          wx.showToast({
+          LoadingManager.showToast({
             title: '已自动完成绑定！',
             icon: 'success',
             duration: 2000
@@ -245,9 +245,7 @@ Page({
           
           // 延迟跳转到首页
           setTimeout(() => {
-            wx.reLaunch({
-              url: '/pages/home/home'
-            });
+            LoadingManager.navigateTo('/pages/home/home', true);
           }, 1000);
           
           return;
@@ -317,16 +315,16 @@ Page({
           this.startBindMonitoring();
           
           // 保存到本地存储
-          wx.setStorageSync('userInfo', userInfo);
-          wx.setStorageSync('myInviteCode', myCode);
+          StorageManager.setStorage('userInfo', userInfo);
+          StorageManager.setStorage('myInviteCode', myCode);
           
         } catch (error) {
           console.error('获取用户信息失败:', error);
-          wx.showToast({ title: '获取用户信息失败', icon: 'error' });
+          LoadingManager.showToast({ title: '获取用户信息失败', icon: 'error' });
         }
       },
       fail: () => {
-        wx.showToast({ title: '需要授权才能使用', icon: 'none' });
+        LoadingManager.showToast({ title: '需要授权才能使用', icon: 'none' });
       }
     });
   },
@@ -364,7 +362,7 @@ Page({
     try {
       const userInfo = this.data.userInfo;
       if (!userInfo) {
-        wx.showToast({ title: '用户信息不存在', icon: 'error' });
+        LoadingManager.showToast({ title: '用户信息不存在', icon: 'error' });
         return;
       }
       
@@ -387,7 +385,7 @@ Page({
       }
       
       // 保存到本地存储
-      wx.setStorageSync('myInviteCode', myCode);
+      StorageManager.setStorage('myInviteCode', myCode);
       
       // 更新页面状态
       this.setData({
@@ -398,11 +396,11 @@ Page({
       // 启动绑定状态监控
       this.startBindMonitoring();
       
-      wx.showToast({ title: '邀请码生成成功', icon: 'success' });
+      LoadingManager.showToast({ title: '邀请码生成成功', icon: 'success' });
       
     } catch (error) {
       console.error('生成邀请码失败:', error);
-      wx.showToast({ title: '生成邀请码失败', icon: 'error' });
+      LoadingManager.showToast({ title: '生成邀请码失败', icon: 'error' });
     }
   },
 
@@ -413,7 +411,7 @@ Page({
     wx.setClipboardData({
       data: this.data.myCode,
       success: () => {
-        wx.showToast({ title: '邀请码已复制', icon: 'success' });
+        LoadingManager.showToast({ title: '邀请码已复制', icon: 'success' });
       }
     });
   },
@@ -447,7 +445,7 @@ Page({
    */
   async confirmBind() {
     if (!this.data.partnerCode) {
-      wx.showToast({ title: '请输入对方邀请码', icon: 'none' });
+      LoadingManager.showToast({ title: '请输入对方邀请码', icon: 'none' });
       return;
     }
     
@@ -459,27 +457,25 @@ Page({
       
       if (result.success) {
         // 绑定成功，直接跳转到首页
-        wx.setStorageSync('bindStatus', 'bound');
+        StorageManager.setStorage('bindStatus', 'bound');
         
         const successMessage = result.message || '绑定成功！';
-        wx.showToast({ 
+        LoadingManager.showToast({ 
           title: successMessage, 
           icon: 'success',
           duration: 2000
         });
         
         setTimeout(() => {
-          wx.reLaunch({
-            url: '/pages/home/home'
-          });
+          LoadingManager.navigateTo('/pages/home/home', true);
         }, 2000);
       } else {
-        wx.showToast({ title: result.message, icon: 'error' });
+        LoadingManager.showToast({ title: result.message, icon: 'error' });
       }
       
     } catch (error) {
       console.error('绑定失败:', error);
-      wx.showToast({ title: '绑定失败，请重试', icon: 'error' });
+      LoadingManager.showToast({ title: '绑定失败，请重试', icon: 'error' });
     } finally {
       this.setData({ loading: false });
     }
@@ -590,12 +586,12 @@ Page({
         
         // 保存到本地存储
 
-        wx.setStorageSync('coupleId', partnerInfo.coupleId);
-        wx.setStorageSync('partnerId', partnerInfo.openid || partnerInfo.userId);
+        StorageManager.setStorage('coupleId', partnerInfo.coupleId);
+        StorageManager.setStorage('partnerId', partnerInfo.openid || partnerInfo.userId);
         // 下载并缓存伴侣头像
         const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
         // 保存情侣头像信息到本地（包含云端地址用于后续比较）
-        wx.setStorageSync('partnerInfo', {
+        StorageManager.setStorage('partnerInfo', {
           nickName: partnerInfo.nickName,
           avatarUrl: localAvatarUrl, // 本地缓存的头像路径
           cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
@@ -687,13 +683,13 @@ Page({
       console.log('保存coupleId:', coupleId);
       console.log('保存partnerId:', partnerId);
       
-      wx.setStorageSync('coupleId', coupleId);
-      wx.setStorageSync('partnerId', partnerId);
+      StorageManager.setStorage('coupleId', coupleId);
+      StorageManager.setStorage('partnerId', partnerId);
       
       // 下载并缓存伴侣头像
       const localAvatarUrl = await this.downloadAndCacheAvatar(partnerInfo.avatarUrl, partnerInfo.openid || partnerInfo.userId);
       // 保存情侣头像信息到本地（包含云端地址用于后续比较）
-      wx.setStorageSync('partnerInfo', {
+      StorageManager.setStorage('partnerInfo', {
         nickName: partnerInfo.nickName,
         avatarUrl: localAvatarUrl, // 本地缓存的头像路径
         cloudAvatarUrl: partnerInfo.avatarUrl // 云端头像URL，用于比较是否需要更新
@@ -701,9 +697,9 @@ Page({
       
       // 验证存储结果
       console.log('存储后验证:');
-      console.log('读取coupleId:', wx.getStorageSync('coupleId'));
-      console.log('读取partnerId:', wx.getStorageSync('partnerId'));
-      console.log('读取partnerInfo:', wx.getStorageSync('partnerInfo'));
+      console.log('读取coupleId:', StorageManager.getStorage('coupleId'));
+      console.log('读取partnerId:', StorageManager.getStorage('partnerId'));
+      console.log('读取partnerInfo:', StorageManager.getStorage('partnerInfo'));
       
       return { 
         success: true, 
@@ -784,7 +780,7 @@ Page({
       
       // 检查本地是否已有缓存
       const cacheKey = `avatar_${userId}`;
-      const cachedPath = wx.getStorageSync(cacheKey);
+      const cachedPath = StorageManager.getStorage(cacheKey);
       if (cachedPath) {
         // 检查缓存文件是否存在
         try {
@@ -794,7 +790,7 @@ Page({
           return cachedPath;
         } catch (e) {
           // 缓存文件不存在，清除缓存记录
-          wx.removeStorageSync(cacheKey);
+          StorageManager.removeStorage(cacheKey);
         }
       }
       
@@ -816,7 +812,7 @@ Page({
       });
       
       // 缓存本地路径
-      wx.setStorageSync(cacheKey, saveResult.savedFilePath);
+      StorageManager.setStorage(cacheKey, saveResult.savedFilePath);
       
       console.log('头像下载并缓存成功:', saveResult.savedFilePath);
       return saveResult.savedFilePath;

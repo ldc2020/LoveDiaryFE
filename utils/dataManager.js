@@ -1,4 +1,5 @@
 const CompressUtil = require('./compressUtil');
+const StorageManager = require('./storageManager.js');
 
 /**
  * 通用数据管理模板
@@ -42,7 +43,7 @@ class DataManager {
     });
     
     // 内部状态
-    this.coupleId = wx.getStorageSync('coupleId');
+    this.coupleId = StorageManager.getStorage('coupleId');
     this.loading = false;
     this.hasMore = true;
     this.currentSkip = 0;
@@ -66,16 +67,23 @@ class DataManager {
     try {
       // 加载缓存统计信息
       const cacheStatsKey = `${this.config.cachePrefix}_cacheStats_${this.coupleId}`;
-      const savedStats = wx.getStorageSync(cacheStatsKey) || {
+      const savedStats = StorageManager.getStorage(cacheStatsKey) || {
         totalSize: 0,
         imageCount: 0,
         lastCleanup: 0
       };
       
       // 如果包含图片，加载图片缓存映射
+      // imageCache用于存储图片的缓存信息,是一个Map结构
+      // key: 云端图片fileID
+      // value: {
+      //   localPath: 本地缓存路径,
+      //   size: 图片大小(字节),
+      //   lastAccess: 最后访问时间戳
+      // }  
       if (this.config.hasImages) {
         const imageCacheKey = `${this.config.cachePrefix}_imageCache_${this.coupleId}`;
-        const savedImageCache = wx.getStorageSync(imageCacheKey) || {};
+        const savedImageCache = StorageManager.getStorage(imageCacheKey) || {};
         this.imageCache = new Map(Object.entries(savedImageCache));
       }
       
@@ -84,6 +92,7 @@ class DataManager {
       // 检查是否需要清理缓存
       const now = Date.now();
       const cleanupInterval = this.config.cleanupInterval * 24 * 60 * 60 * 1000;
+      // const cleanupInterval = this.config.cleanupInterval *  1000;
       if (now - savedStats.lastCleanup > cleanupInterval) {
         console.log(`${this.config.cachePrefix}: 检测到需要清理缓存，延迟2秒执行`);
         setTimeout(async () => {
@@ -164,10 +173,34 @@ class DataManager {
         if (hasNewData) {
           console.log(`${this.config.cachePrefix}: 检测到新数据，开始处理`);
           
-          // 如果包含图片，缓存图片
-          if (this.config.hasImages) {
-            processedData = await this.cacheDataImages(cloudData);
+          // 识别真正的新数据（避免重复下载已缓存的图片）
+          const cachedIds = new Set(cachedData.map(item => item._id));
+          const actualNewData = cloudData.filter(item => !cachedIds.has(item._id));
+          const existingData = cloudData.filter(item => cachedIds.has(item._id));
+          
+          console.log(`${this.config.cachePrefix}: 数据分析`, {
+            总数据: cloudData.length,
+            新数据: actualNewData.length,
+            已存在数据: existingData.length
+          });
+          
+          let processedNewData = actualNewData;
+          let processedExistingData = existingData;
+          
+          // 只对真正的新数据进行图片缓存下载
+          if (this.config.hasImages && actualNewData.length > 0) {
+            console.log(`${this.config.cachePrefix}: 开始下载新数据的图片`);
+            processedNewData = await this.cacheDataImages(actualNewData);
           }
+          
+          // 对已存在的数据应用本地缓存路径
+          if (this.config.hasImages && existingData.length > 0) {
+            console.log(`${this.config.cachePrefix}: 应用已存在数据的本地缓存路径`);
+            processedExistingData = this.applyLocalImageCache(existingData);
+          }
+          
+          // 合并处理后的数据
+          processedData = [...processedNewData, ...processedExistingData];
           
           // 合并新数据和现有缓存数据
           const mergedData = this.mergeWithCachedData(processedData, cachedData);
@@ -222,7 +255,7 @@ class DataManager {
         ...data,
         coupleId: this.coupleId,
         [this.config.timestampField]: new Date(),
-        _openid: wx.getStorageSync('userInfo')?.openid
+        _openid: StorageManager.getStorage('userInfo')?.openid
       };
       
       // 如果包含图片，先上传图片
@@ -261,7 +294,7 @@ class DataManager {
   }
   
   /**
-   * 更新数据
+   * 更新本地和云端[内容缓存]数据（特指不是图片缓存）
    * @param {string} dataId - 数据ID
    * @param {Object} updateData - 要更新的数据
    * @returns {Promise<void>}
@@ -303,17 +336,29 @@ class DataManager {
       const db = wx.cloud.database();
       
       // 如果包含图片，删除云端图片文件
-      if (this.config.hasImages && dataItem && dataItem.images) {
-        await this.deleteCloudImages(dataItem.images);
+      if (this.config.hasImages && dataItem) {
+        // 处理images数组（用于space等模块）
+        if (dataItem.images && Array.isArray(dataItem.images)) {
+          await this.deleteCloudImages(dataItem.images);
+          await this.deleteLocalImages(dataItem.images);
+        }
         
-        // 删除本地缓存图片
-        await this.deleteLocalImages(dataItem.images);
+        // 处理imageCloudPath字段（用于cooking等模块）
+        if (dataItem.imageCloudPath) {
+          await this.deleteCloudImages([dataItem.imageCloudPath]);
+          // 删除本地缓存的图片文件
+          if (dataItem.imageLocalPath) {
+            await this.deleteLocalImageFile(dataItem.imageLocalPath);
+          }
+          // 删除图片缓存映射
+          this.removeCachedImagePath(dataItem.imageCloudPath);
+        }
       }
       
       // 删除云端数据
       await db.collection(this.config.collectionName).doc(dataId).remove();
       
-      // 从本地缓存中删除
+      // 从本地[内容缓存]中删除
       const cachedData = this.getLocalCachedData();
       const filteredData = cachedData.filter(item => item._id !== dataId);
       this.updateLocalCache(filteredData);
@@ -332,14 +377,13 @@ class DataManager {
   getLocalCachedData() {
     try {
       const cacheKey = `${this.config.cachePrefix}_${this.coupleId}`;
-      let cachedData = wx.getStorageSync(cacheKey) || [];
-      
+      let cachedData = StorageManager.getStorage(cacheKey) || [];
       // 确保cachedData是数组类型
       if (!Array.isArray(cachedData)) {
         console.warn(`${this.config.cachePrefix}: 缓存数据格式错误，重置为空数组`, typeof cachedData);
         cachedData = [];
         // 清除错误的缓存数据
-        wx.removeStorageSync(cacheKey);
+        StorageManager.removeStorage(cacheKey);
       }
       
       // 如果缓存为空，尝试从磁盘加载50条数据
@@ -441,12 +485,11 @@ class DataManager {
   updateLocalCache(data) {
     try {
       const cacheKey = `${this.config.cachePrefix}_${this.coupleId}`;
-      
       // 限制缓存数据量，只保留最新的数据
       const maxCacheSize = this.config.pageSize * 10; // 保留10页的数据
       const dataToCache = data.slice(0, maxCacheSize);
       
-      wx.setStorageSync(cacheKey, dataToCache);
+      StorageManager.setStorage(cacheKey, dataToCache);
       console.log(`${this.config.cachePrefix}: 本地缓存更新完成，缓存${dataToCache.length}条数据`);
     } catch (error) {
       console.error(`${this.config.cachePrefix}: 更新本地缓存失败`, error);
@@ -520,6 +563,7 @@ class DataManager {
   
   /**
    * 智能缓存清理
+   * 清除:图片缓存+图片缓存映射（xx_imageCache_coupleid）+具体内容（xx_coupleid）
    */
   async smartCacheCleanup() {
     const now = Date.now();
@@ -533,7 +577,7 @@ class DataManager {
     
     try {
       const cacheKey = `${this.config.cachePrefix}_${this.coupleId}`;
-      const cachedData = wx.getStorageSync(cacheKey) || [];
+      const cachedData = StorageManager.getStorage(cacheKey) || [];
       const dataToKeep = [];
       
       // 遍历所有数据，检查是否过期
@@ -557,7 +601,7 @@ class DataManager {
       }
       
       // 更新缓存，只保留未过期的数据
-      wx.setStorageSync(cacheKey, dataToKeep);
+      StorageManager.setStorage(cacheKey, dataToKeep);
       
       // 更新清理时间
       this.cacheStats.lastCleanup = now;
@@ -604,6 +648,97 @@ class DataManager {
     
     return Promise.all(uploadPromises);
   }
+
+  /**
+   * 完整的图片上传流程：压缩、本地存储、缓存更新、云端上传、数据库更新、删除旧图片
+   *  分清 【图片】 和 【内容】
+   * @param {string} imagePath - 本地图片路径
+   * @param {string} dataId - 数据记录ID
+   * @param {string} imageField - 图片字段名（默认使用缓存前缀格式）
+   * @param {Function} localUpdateCallback - 本地数据更新回调函数
+   * @returns {Promise<Object>} 包含本地路径和云端fileID的结果
+   */
+  async uploadImageWithFullProcess(imagePath, dataId, localUpdateCallback = null) {
+    if (!this.config.hasImages || !imagePath) {
+      throw new Error('图片路径不能为空或当前配置不支持图片');
+    }
+
+    try {
+       // 设置默认字段名
+       
+      const imageField = `${this.config.cachePrefix}_imageCache_${this.coupleId}`;
+       
+       // 1. 获取旧图片URL（如果存在）
+       let oldImageUrl = null;
+       if (dataId) {
+         try {
+           const db = wx.cloud.database();
+           const result = await db.collection(this.config.collectionName).doc(dataId).get();
+           if (result.data && result.data['imageCloudPath']) {
+             oldImageUrl = result.data['imageCloudPath'];
+             console.log(`${this.config.cachePrefix}: 找到旧图片URL`, oldImageUrl);
+           }
+         } catch (error) {
+           console.warn(`${this.config.cachePrefix}: 获取旧图片URL失败`, error);
+         }
+       }
+       
+       // 2. 压缩图片
+       console.log(`${this.config.cachePrefix}: 开始压缩图片...`);
+       const compressedPath = await this.compressImage(imagePath);
+       
+       // 3. 上传到云存储
+       console.log(`${this.config.cachePrefix}: 开始上传到云存储...`);
+       const cloudPath = `${this.config.cachePrefix}/${Date.now()}.jpg`;
+       const uploadResult = await wx.cloud.uploadFile({
+         cloudPath: cloudPath,
+         filePath: compressedPath
+       });
+       const imageUrl = uploadResult.fileID;
+       
+       // 4. 缓存图片到本地
+       console.log(`${this.config.cachePrefix}: 开始缓存图片到本地...`);
+       const localPath = await this.smartImageCache(imageUrl);
+       
+       // 5. 更新本地内容缓存以及云端内容数据
+        if (dataId) {
+          console.log(`${this.config.cachePrefix}: 开始更新本地内容缓存以及云端内容数据...`);
+          const updateData = {};
+          updateData['imageCloudPath'] = imageUrl;
+          updateData['imageLocalPath'] = localPath;
+          await this.updateData(dataId, updateData);
+        }
+        
+        // 6. 删除旧图片（在数据库更新成功后）
+        if (oldImageUrl) {
+          try {
+            console.log(`${this.config.cachePrefix}: 开始删除旧图片...`);
+            await this.deleteCloudImage(oldImageUrl);
+          } catch (error) {
+            console.warn(`${this.config.cachePrefix}: 删除旧图片失败`, error);
+            // 删除失败不影响整个流程
+          }
+        }
+        
+        // 7. 执行本地数据更新回调
+        if (localUpdateCallback && typeof localUpdateCallback === 'function') {
+          console.log(`${this.config.cachePrefix}: 执行本地数据更新回调...`);
+          localUpdateCallback(localPath);
+        }
+        
+        console.log(`${this.config.cachePrefix}: 图片上传完整流程完成`);
+        return {
+          fileID: imageUrl,
+          localPath: localPath,
+          imageField: imageField,
+          success: true
+        };
+      
+    } catch (error) {
+      console.error(`${this.config.cachePrefix}: 图片上传完整流程失败`, error);
+      throw error;
+    }
+  }
   
   /**
    * 压缩图片
@@ -634,7 +769,7 @@ class DataManager {
     
     for (const item of dataList) {
       const processedItem = { ...item };
-      
+      // 处理images数组字段
       if (item.images && Array.isArray(item.images) && item.images.length > 0) {
         const cachedImages = [];
         
@@ -666,6 +801,31 @@ class DataManager {
         processedItem.images = cachedImages;
       }
       
+      // 处理imageCloudPath字段 - 单个图片字段的云端路径下载
+      if (item.imageCloudPath ) {
+        try {
+          console.log(`${this.config.cachePrefix}: 开始下载imageCloudPath图片`, item.imageCloudPath);
+          const cachedPath = await this.smartImageCache(item.imageCloudPath);
+          processedItem.imageLocalPath = cachedPath;
+          console.log(`${this.config.cachePrefix}: imageCloudPath图片下载成功`, cachedPath);
+          
+          // 重要：将本地路径更新到云端数据库
+          // 这确保imageLocalPath字段在云端也得到更新
+          if (item._id && cachedPath !== item.imageLocalPath) {
+            try {
+              await this.updateData(item._id, { imageLocalPath: cachedPath });
+              console.log(`${this.config.cachePrefix}: 已更新云端imageLocalPath`, item._id, cachedPath);
+            } catch (updateError) {
+              console.error(`${this.config.cachePrefix}: 更新云端imageLocalPath失败`, item._id, updateError);
+              // 即使云端更新失败，本地仍然可以使用缓存路径
+            }
+          }
+        } catch (error) {
+          console.error(`${this.config.cachePrefix}: 下载imageCloudPath图片失败`, item.imageCloudPath, error);
+          // 下载失败时保持原有的imageCloudPath，不设置imageLocalPath
+        }
+      }
+      
       processedData.push(processedItem);
     }
     
@@ -685,6 +845,7 @@ class DataManager {
     return dataList.map(item => {
       const updatedItem = { ...item };
       
+      // 处理images数组字段
       if (item.images && Array.isArray(item.images) && item.images.length > 0) {
         const cachedImages = item.images.map(imageUrl => {
           const cachedPath = this.getCachedImagePath(imageUrl);
@@ -696,6 +857,15 @@ class DataManager {
         
         updatedItem.cloudImages = item.images;
         updatedItem.images = cachedImages;
+      }
+      
+      // 处理imageCloudPath字段 - 应用本地缓存路径
+      if (item.imageCloudPath && !item.imageLocalPath) {
+        const cachedPath = this.getCachedImagePath(item.imageCloudPath);
+        if (cachedPath !== item.imageCloudPath) {
+          // 如果找到了本地缓存路径，则设置imageLocalPath
+          updatedItem.imageLocalPath = cachedPath;
+        }
       }
       
       return updatedItem;
@@ -770,8 +940,22 @@ class DataManager {
     });
     
     // 添加到缓存
+    // 确保localPath格式正确：真机上为wxfile://，开发者工具上为http://store/
+    let localPath = savedResult.savedFilePath;
+    
+    // 修正开发者工具中的路径格式，统一使用store目录
+    if (localPath && (localPath.includes('127.0.0.1') || localPath.includes('tmp') || localPath.includes('__store__')|| localPath.includes('store'))) {
+      // 提取文件名部分
+      const fileName = localPath.split('/').pop();
+      // 在开发者工具中统一使用store目录格式
+      
+      localPath = `http://store/${fileName}`;
+      console.log(`${this.config.cachePrefix}: 修正本地路径格式:`, savedResult.savedFilePath, '->', localPath);
+      
+    }
+    
     const cacheItem = {
-      localPath: savedResult.savedFilePath,
+      localPath: localPath,
       size: fileSize,
       lastAccess: now,
       downloadTime: now
@@ -818,7 +1002,7 @@ class DataManager {
     
     try {
       const cacheKey = `${this.config.cachePrefix}_${this.coupleId}`;
-      const cachedData = wx.getStorageSync(cacheKey) || [];
+      const cachedData = StorageManager.getStorage(cacheKey) || [];
       const now = Date.now();
       let updated = false;
       
@@ -845,7 +1029,7 @@ class DataManager {
       });
       
       if (updated) {
-        wx.setStorageSync(cacheKey, updatedData);
+        StorageManager.setStorage(cacheKey, updatedData);
       }
     } catch (error) {
       console.warn(`${this.config.cachePrefix}: 更新数据访问时间失败`, error);
@@ -892,6 +1076,31 @@ class DataManager {
   }
   
   /**
+    * 删除单个云端图片
+    * @param {string} imageUrl - 图片URL或fileID
+    */
+   async deleteCloudImage(imageUrl) {
+     if (!this.config.hasImages || !imageUrl) {
+       return;
+     }
+     
+     try {
+       await wx.cloud.deleteFile({
+         fileList: [imageUrl]
+       });
+       
+       // 同时删除本地缓存
+       await this.removeCacheItemOnly(imageUrl);
+       
+       console.log(`${this.config.cachePrefix}: 单个云端图片删除成功`, imageUrl);
+     } catch (error) {
+       console.error(`${this.config.cachePrefix}: 删除单个云端图片失败`, error);
+       throw error;
+     }
+   }
+   
+   
+  /**
    * 删除本地缓存图片
    * @param {Array} images - 图片数组
    */
@@ -931,7 +1140,7 @@ class DataManager {
   }
   
   /**
-   * 仅删除缓存项（不删除物理文件）
+   * 删除缓存映射项和对应的除物理文件，没有图片的不删除
    * @param {string} fileID - 文件ID
    */
   async removeCacheItemOnly(fileID) {
@@ -946,7 +1155,7 @@ class DataManager {
         try {
           const fs = wx.getFileSystemManager();
           await new Promise((resolve, reject) => {
-            fs.unlink({
+            fs.removeSavedFile({
               filePath: cacheItem.localPath,
               success: resolve,
               fail: reject
@@ -978,11 +1187,11 @@ class DataManager {
       if (this.config.hasImages) {
         const imageCacheKey = `${this.config.cachePrefix}_imageCache_${this.coupleId}`;
         const imageCacheObj = Object.fromEntries(this.imageCache.entries());
-        wx.setStorageSync(imageCacheKey, imageCacheObj);
+        StorageManager.setStorage(imageCacheKey, imageCacheObj);
       }
       
       const cacheStatsKey = `${this.config.cachePrefix}_cacheStats_${this.coupleId}`;
-      wx.setStorageSync(cacheStatsKey, this.cacheStats);
+      StorageManager.setStorage(cacheStatsKey, this.cacheStats);
     } catch (error) {
       console.error(`${this.config.cachePrefix}: 保存缓存数据失败`, error);
     }
@@ -995,7 +1204,7 @@ class DataManager {
   updateCacheStats() {
     try {
       const cacheStatsKey = `${this.config.cachePrefix}_cacheStats_${this.coupleId}`;
-      wx.setStorageSync(cacheStatsKey, this.cacheStats);
+      StorageManager.setStorage(cacheStatsKey, this.cacheStats);
       console.log(`${this.config.cachePrefix}: 缓存统计已更新`, {
         总大小: this.formatFileSize(this.cacheStats.totalSize),
         图片数量: this.cacheStats.imageCount,
@@ -1057,7 +1266,7 @@ class DataManager {
       
       // 清空数据缓存
       const cacheKey = `${this.config.cachePrefix}_${this.coupleId}`;
-      wx.removeStorageSync(cacheKey);
+      StorageManager.removeStorage(cacheKey);
       
       return {
         cleanedCount,
@@ -1098,6 +1307,57 @@ class DataManager {
       loading: this.loading,
       pageSize: this.config.pageSize
     };
+  }
+
+  /**
+   * 删除单个本地图片文件
+   * @param {string} localPath - 本地图片路径
+   */
+  async deleteLocalImageFile(localPath) {
+    if (!localPath) {
+      return;
+    }
+    
+    try {
+      const fs = wx.getFileSystemManager();
+      await new Promise((resolve, reject) => {
+        fs.removeSavedFile({
+          filePath: localPath,
+          success: resolve,
+          fail: reject
+        });
+      });
+      console.log(`${this.config.cachePrefix}: 删除本地图片文件成功`, localPath);
+    } catch (error) {
+      console.warn(`${this.config.cachePrefix}: 删除本地图片文件失败`, localPath, error);
+    }
+  }
+
+  /**
+   * 移除图片缓存映射
+   * @param {string} cloudPath - 云端图片路径
+   */
+  removeCachedImagePath(cloudPath) {
+    if (!cloudPath || !this.config.hasImages) {
+      return;
+    }
+    
+    try {
+      const cacheItem = this.imageCache.get(cloudPath);
+      if (cacheItem) {
+        // 从缓存中移除
+        this.imageCache.delete(cloudPath);
+        
+        // 更新统计信息
+        this.cacheStats.totalSize -= (cacheItem.size || 0);
+        this.cacheStats.imageCount -= 1;
+        
+        this.saveCacheData();
+        console.log(`${this.config.cachePrefix}: 移除图片缓存映射成功`, cloudPath);
+      }
+    } catch (error) {
+      console.error(`${this.config.cachePrefix}: 移除图片缓存映射失败`, cloudPath, error);
+    }
   }
 }
 

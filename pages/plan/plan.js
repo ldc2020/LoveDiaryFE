@@ -8,6 +8,8 @@
 // 日志记录 - 微信小程序环境使用console替代winston
 const app = getApp();
 const CompressUtil = require('../../utils/compressUtil');
+const StorageManager = require('../../utils/storageManager.js');
+const LoadingManager = require('../../utils/loadingManager.js');
 
 // 定义常量 - plan页面只显示计划数量，不需要分页和云端更新
 // 数据由各个具体计划页面维护和更新
@@ -36,6 +38,7 @@ Page({
     
     // 加载状态 - 简化为只需要loading状态
     loading: false,
+    pageLoaded: false, // 页面是否已加载，避免onShow重复调用数据库
     
     // 当前选中的计划类型
     currentPlanType: '',
@@ -76,14 +79,12 @@ Page({
     console.log('情侣计划页面开始加载');
     
     // 检查绑定状态
-    const coupleId = wx.getStorageSync('coupleId');
-    const bindStatus = wx.getStorageSync('bindStatus');
+    const coupleId = StorageManager.getStorage('coupleId');
+    const bindStatus = StorageManager.getStorage('bindStatus');
     
     if (!coupleId || bindStatus !== 'bound') {
       console.warn('用户未绑定，跳转到绑定页面');
-      wx.reLaunch({
-        url: '/pages/bind/bind'
-      });
+      LoadingManager.navigateTo('/pages/bind/bind', true);
       return;
     }
     
@@ -92,7 +93,8 @@ Page({
     // 初始化用户信息
     this.initUserInfo();
     
-
+    // 标记页面已加载，避免onShow重复调用
+    this.setData({ pageLoaded: true });
     
     // 加载计划数量统计
     this.loadPlanCountsFromCloud();
@@ -103,7 +105,7 @@ Page({
    * @description 从本地存储获取用户信息
    */
   initUserInfo() {
-    const userInfo = wx.getStorageSync('userInfo');
+    const userInfo = StorageManager.getStorage('userInfo');
     if (userInfo) {
       this.setData({ userInfo });
       console.log('用户信息初始化完成', { userId: userInfo.openid });
@@ -165,10 +167,7 @@ Page({
       
     } catch (error) {
       console.error('从云端加载计划数量失败:', error);
-      wx.showToast({
-        title: '加载统计失败',
-        icon: 'none'
-      });
+      LoadingManager.showToast('加载统计失败', 'none');
       
       // 设置默认值
       this.setData({
@@ -476,7 +475,7 @@ Page({
 
     try {
       // 获取伴侣信息
-      const partnerInfo = wx.getStorageSync('partnerInfo');
+      const partnerInfo = StorageManager.getStorage('partnerInfo');
       
       // 添加通用字段
       const finalData = {
@@ -486,7 +485,7 @@ Page({
         updateTime: db.serverDate(),
         creator: this.data.userInfo.openid,
         creatorNickName: this.data.userInfo.nickName, // 添加创建者昵称
-        partnerId: wx.getStorageSync('partnerId'), // 添加伴侣ID
+        partnerId: StorageManager.getStorage('partnerId'), // 添加伴侣ID
         partnerNickName: partnerInfo?.nickName || '', // 添加伴侣昵称
         status: 'pending',
         // 添加互动相关字段
@@ -621,8 +620,16 @@ Page({
   onShow() {
     console.log('情侣计划页面显示');
     
-    // 从云端加载计划统计数据
-    this.loadPlanCountsFromCloud();
+    // 避免与onLoad重复调用数据库查询
+    // 只有在页面未加载或者需要刷新数据时才调用
+    if (!this.data.pageLoaded) {
+      console.log('onShow: 页面未完全加载，开始获取计划统计数据');
+      this.loadPlanCountsFromCloud();
+    } else {
+      console.log('onShow: 页面已加载，跳过重复的数据库查询');
+      // 可以在这里添加其他需要在页面显示时执行的逻辑
+      // 比如检查是否需要更新数据等
+    }
   },
 
 
@@ -632,6 +639,8 @@ Page({
    */
   onPullDownRefresh() {
     console.log('用户下拉刷新');
+    // 重置页面加载标志，确保能正常刷新数据
+    this.setData({ pageLoaded: false });
     this.loadPlanCountsFromCloud();
     wx.stopPullDownRefresh();
   },
@@ -921,10 +930,7 @@ Page({
   async addMoviePlan() {
     const { movieInfo, userInfo } = this.data;
     if (!movieInfo) {
-      wx.showToast({
-        title: '请先搜索电影信息',
-        icon: 'none'
-      });
+      LoadingManager.showToast('请先搜索电影信息', 'none');
       return;
     }
 
@@ -959,17 +965,11 @@ Page({
       // 关闭弹窗
       this.hideManualAdd();
 
-      wx.showToast({
-        title: '添加成功',
-        icon: 'success'
-      });
+      LoadingManager.showToast('添加成功', 'success');
 
     } catch (error) {
       console.error('添加影视计划失败:', error);
-      wx.showToast({
-        title: '添加失败，请重试',
-        icon: 'error'
-      });
+      LoadingManager.showToast('添加失败，请重试', 'error');
     } finally {
       this.setData({ isAdding: false });
     }
@@ -1003,29 +1003,19 @@ Page({
         });
         break;
       case 'cooking':
-        wx.navigateTo({
-          url: '/pages/plan/cooking/cooking'
-        });
+        LoadingManager.navigateTo('/pages/plan/cooking/cooking');
         break;
       case 'exercise':
-        wx.navigateTo({
-          url: '/pages/plan/exercise/exercise'
-        });
+        LoadingManager.navigateTo('/pages/plan/exercise/exercise');
         break;
       case 'travel':
-        wx.navigateTo({
-          url: '/pages/plan/travel/travel'
-        });
+        LoadingManager.navigateTo('/pages/plan/travel/travel');
         break;
       case 'shop':
-        wx.navigateTo({
-          url: '/pages/plan/shop/shop'
-        });
+        LoadingManager.navigateTo('/pages/plan/shop/shop');
         break;
       case 'memo':
-        wx.navigateTo({
-          url: '/pages/plan/memo/memo'
-        });
+        LoadingManager.navigateTo('/pages/plan/memo/memo');
         break;
       default:
         console.warn('未知的计划类型:', type);

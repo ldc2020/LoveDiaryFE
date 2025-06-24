@@ -1,35 +1,26 @@
 // pages/home/home.js
 const CompressUtil = require('../../utils/compressUtil');
 const CloudConfig = require('../../utils/cloudConfig');
+const ImageHandler = require('../../utils/imageHandler');
+const LoadingManager = require('../../utils/loadingManager');
+const StorageManager = require('../../utils/storageManager');
 
 Page({
 
   /**
    * 保存单个图片到本地永久路径（统一使用images目录）
    * 自动压缩图片到100k左右
+   * @deprecated 使用 ImageHandler.compressAndSaveImages 替代
    */
   async saveImageToLocal(tempFilePath) {
-    try {  
-      // 使用CompressUtil压缩图片到100k左右
-      const compressedResult = await CompressUtil.compressImage(tempFilePath, 100 * 1024);
-
-      // 使用saveFile保存压缩后的图片到永久存储
-      const fs = wx.getFileSystemManager();
-      const saveResult = await new Promise((resolve, reject) => {
-        fs.saveFile({
-          tempFilePath: compressedResult.tempFilePath,
-          success: resolve,
-          fail: reject
-        });
+    try {
+      const savedPaths = await ImageHandler.compressAndSaveImages([tempFilePath], {
+        targetSize: 100 * 1024,
+        showLoading: false
       });
-      
-    
-      
-      return saveResult.savedFilePath;
-      
+      return savedPaths[0];
     } catch (error) {
       console.error('压缩保存图片到本地失败:', error);
-      // 保存失败时抛出错误，不返回无效路径
       throw error;
     }
   },
@@ -64,21 +55,19 @@ Page({
    */
   onLoad(options) {
     // 检查绑定状态
-    const coupleId = wx.getStorageSync('coupleId');
-    const bindStatus = wx.getStorageSync('bindStatus');
+    const coupleId = StorageManager.getStorage('coupleId');
+    const bindStatus = StorageManager.getStorage('bindStatus');
     
     if (!coupleId || bindStatus !== 'bound') {
       // 未绑定，跳转到绑定页面
-      wx.reLaunch({
-        url: '/pages/bind/bind'
-      });
+      LoadingManager.navigateTo('/pages/bind/bind', true);
       return;
     }
     
     // 云开发已在app.js中初始化，无需重复初始化
 
     // 加载背景图片
-    const cachedBackgroundImage = wx.getStorageSync('showbackgroundImage');
+    const cachedBackgroundImage = StorageManager.getStorage('showbackgroundImage');
     
     
     if (cachedBackgroundImage) {
@@ -95,16 +84,13 @@ Page({
         },
         fail: err => {
           console.error('下载默认背景图片失败:', err);
-          wx.showToast({
-            title: '加载默认背景失败',
-            icon: 'error'
-          });
+          LoadingManager.showToast('加载默认背景失败', 'error');
         }
       });
     }
 
     // 从本地存储加载轮播图片
-    const savedImages = wx.getStorageSync('showCarouselImages');
+    const savedImages = StorageManager.getStorage('showCarouselImages');
     if (savedImages && savedImages.length > 0) {
       this.setData({ CarouselImages: savedImages });
     }
@@ -174,129 +160,79 @@ Page({
   
   /**
    * 压缩图片
+   * @deprecated 使用 ImageHandler.compressImage 替代
    */
   async compressImage(tempFilePath) {
-    try {
-      const result = await CompressUtil.compressImage(tempFilePath);
-      return result.tempFilePath;
-    } catch (error) {
-      console.log('图片压缩失败，使用原图:', error);
-      return tempFilePath;
-    }
+    return await ImageHandler.compressImage(tempFilePath);
   },
 
   /**
    * 追加保存多张图片到本地存储（带压缩功能）
+   * @deprecated 使用 ImageHandler.compressAndSaveImages 和 StorageManager 替代
    */
   async unifiedSaveImagesToStorage(tempFilePaths, dataKey, isFirstLoad, oldImages = []) {
-    const savedPaths = [];
-    let savedCount = 0;
-    wx.showLoading({ title: '压缩并保存图片中...' });
-    
-    if (!tempFilePaths || tempFilePaths.length === 0) {
-      wx.hideLoading();
-      wx.showToast({ title: '未选择图片', icon: 'none' });
-      return;
-    }
-    
-    const fs = wx.getFileSystemManager();
-    
-    // 只在更新模式下（oldImages为空）删除旧文件
-    if (oldImages.length === 0) {
-      const oldPaths = wx.getStorageSync(`show${dataKey}`) || [];
-      oldPaths.forEach(filePath => {
-        fs.removeSavedFile({
-          filePath,
-          success: (res) => {
-            console.log('删除旧文件成功:', res);
-          },
-          fail: (err) => {
-            console.log('删除旧文件失败:', err);
-          }
-        });
-      });
-    }
-
-    // 先压缩所有图片
     try {
-      const compressedPaths = await Promise.all(
-        tempFilePaths.map(tempPath => this.compressImage(tempPath))
-      );
-      
-      // 保存压缩后的图片
-      compressedPaths.forEach((compressedPath, index) => {
-        fs.saveFile({
-          tempFilePath: compressedPath,
-          success: (saveRes) => {
-            savedPaths.push(saveRes.savedFilePath);
-            savedCount++;
-            if (savedCount === compressedPaths.length) {
-              const allImages = oldImages.concat(savedPaths);
-              wx.setStorageSync(`show${dataKey}`, allImages);
-              this.setData({ [dataKey]: allImages });
-              wx.hideLoading();
-              if (!isFirstLoad) {
-                wx.showToast({ 
-                  title: oldImages.length > 0 ? '图片压缩并追加成功' : '图片压缩并更新成功', 
-                  icon: 'success' 
-                });
-              }
-            }
-          },
-          fail: (err) => {
-            savedCount++;
-            console.log('保存压缩图片失败:', err.errMsg);
-            if (savedCount === compressedPaths.length) {
-              const allImages = oldImages.concat(savedPaths);
-              if (savedPaths.length > 0) { 
-                wx.setStorageSync(`show${dataKey}`, allImages);
-                this.setData({ [dataKey]: allImages });
-                wx.hideLoading();
-                wx.showToast({ title: '部分图片保存失败', icon: 'none' });
-              } else {
-                wx.hideLoading();
-                wx.showToast({ title: '保存图片失败', icon: 'error' });
-              }
-            }
-          }
-        });
+      if (!tempFilePaths || tempFilePaths.length === 0) {
+        LoadingManager.showToast('未选择图片');
+        return;
+      }
+
+      // 删除旧文件（仅在更新模式下）
+      if (oldImages.length === 0) {
+        const oldPaths = StorageManager.getStorage(`show${dataKey}`, []);
+        await ImageHandler.removeLocalFiles(oldPaths);
+      }
+
+      // 压缩并保存图片
+      const savedPaths = await ImageHandler.compressAndSaveImages(tempFilePaths, {
+        loadingText: '压缩并保存图片中...'
       });
+
+      // 合并图片路径
+      const allImages = oldImages.concat(savedPaths);
+      
+      // 更新存储和页面数据
+      await StorageManager.setStorage(`show${dataKey}`, allImages);
+      this.setData({ [dataKey]: allImages });
+      
+      if (!isFirstLoad) {
+        const message = oldImages.length > 0 ? '图片压缩并追加成功' : '图片压缩并更新成功';
+        LoadingManager.showSuccess(message);
+      }
     } catch (error) {
-      console.error('图片压缩过程出错:', error);
-      wx.hideLoading();
-      wx.showToast({ title: '图片处理失败', icon: 'error' });
+      console.error('保存图片失败:', error);
+      LoadingManager.showError('图片处理失败');
     }
   },
   /*
     选择图片逻辑
     */
-  chooseImages(addOrUpdate,maxCnt,dataKey,isFirstLoad){
-    wx.showActionSheet({
-      itemList: ['从相册选择', '拍照'],
-      success: (res) => {
-        const sourceType = res.tapIndex === 0 ? ['album'] : ['camera'];
-        wx.chooseMedia({
-          mediaType: ['image'],
-          count: maxCnt, // 最多可选9张
-          sizeType: ['compressed'], // 优化：只使用压缩图片，提升性能
-          sourceType: sourceType,
-          success: (res) => {
-            const tempFiles = res.tempFiles;
-            const tempFilePaths = tempFiles.map(file => file.tempFilePath);
-            // 先获取原有图片
-            let oldImages = this.data[dataKey] || [];
-            // 追加保存新图片
-            addOrUpdate == 'add' ? this.unifiedSaveImagesToStorage(tempFilePaths, dataKey,isFirstLoad, oldImages) :
-             this.unifiedSaveImagesToStorage(tempFilePaths, dataKey,isFirstLoad);
-            
-            this.setData({ showSettingsPopup: false, handlePageTap: '' });
-          },
-          fail: (err) => {
-            wx.showToast({ title: '选择图片失败', icon: 'error' });
-          }
-        });
+  /**
+   * 选择图片
+   * @deprecated 使用 ImageHandler.chooseImages 替代
+   */
+  async chooseImages(addOrUpdate, maxCnt, dataKey, isFirstLoad) {
+    try {
+      const tempFilePaths = await ImageHandler.chooseImages({
+        count: maxCnt,
+        showActionSheet: true
+      });
+      
+      if (!tempFilePaths || tempFilePaths.length === 0) {
+        return;
       }
-    });
+      
+      // 获取原有图片
+      const oldImages = addOrUpdate === 'add' ? (this.data[dataKey] || []) : [];
+      
+      // 保存图片
+      await this.unifiedSaveImagesToStorage(tempFilePaths, dataKey, isFirstLoad, oldImages);
+      
+      this.setData({ showSettingsPopup: false, handlePageTap: '' });
+    } catch (error) {
+      console.error('选择图片失败:', error);
+      LoadingManager.showError('选择图片失败');
+    }
   },
   /**
    * 更换背景图片
@@ -418,30 +354,33 @@ Page({
    * @param {number} index - 要删除的图片索引
    * @param {string} dataKey - 数据键名，默认为'CarouselImages'
    */
-  deleteImageByIndex(index, dataKey = 'CarouselImages') {
+  async deleteImageByIndex(index, dataKey = 'CarouselImages') {
     const images = this.data[dataKey] || [];
     
     if (index < 0 || index >= images.length) {
-      wx.showToast({
-        title: '删除失败：索引无效',
-        icon: 'error'
-      });
+      LoadingManager.showError('删除失败：索引无效');
       return false;
     }
     
-    // 删除指定索引的图片
-    const updatedImages = images.filter((_, i) => i !== index);
-    
-    // 更新本地存储和页面数据
-    wx.setStorageSync(`show${dataKey}`, updatedImages);
-    this.setData({ [dataKey]: updatedImages });
-    
-    wx.showToast({
-      title: '删除成功',
-      icon: 'success'
-    });
-    
-    return true;
+    try {
+      // 删除本地文件
+      const imagePath = images[index];
+      await ImageHandler.removeLocalFiles([imagePath]);
+      
+      // 删除指定索引的图片
+      const updatedImages = images.filter((_, i) => i !== index);
+      
+      // 更新本地存储和页面数据
+      await StorageManager.setStorage(`show${dataKey}`, updatedImages);
+      this.setData({ [dataKey]: updatedImages });
+      
+      LoadingManager.showSuccess('删除成功');
+      return true;
+    } catch (error) {
+      console.error('删除图片失败:', error);
+      LoadingManager.showError('删除失败');
+      return false;
+    }
   },
 
   /**
@@ -449,19 +388,16 @@ Page({
    * @param {string} imagePath - 要删除的图片路径
    * @param {string} dataKey - 数据键名，默认为'CarouselImages'
    */
-  deleteImageByPath(imagePath, dataKey = 'CarouselImages') {
+  async deleteImageByPath(imagePath, dataKey = 'CarouselImages') {
     const images = this.data[dataKey] || [];
     const index = images.findIndex(img => img === imagePath);
     
     if (index === -1) {
-      wx.showToast({
-        title: '删除失败：图片不存在',
-        icon: 'error'
-      });
+      LoadingManager.showError('删除失败：图片不存在');
       return false;
     }
     
-    return this.deleteImageByIndex(index, dataKey);
+    return await this.deleteImageByIndex(index, dataKey);
   },
 
   
@@ -506,18 +442,18 @@ Page({
   async checkAndUpdateUserInfo() {
     try {
       // 检查是否有正在进行的用户信息处理（避免与index页面冲突）
-      const isProcessingUserInfo = wx.getStorageSync('isProcessingUserInfo');
+      const isProcessingUserInfo = StorageManager.getStorage('isProcessingUserInfo');
       if (isProcessingUserInfo) {
         console.log('用户信息正在处理中，跳过本次更新');
         // 从缓存加载用户信息
-        const userInfo = wx.getStorageSync('userInfo');
+        const userInfo = StorageManager.getStorage('userInfo');
         if (userInfo) {
           this.setData({ userInfo });
         }
         return;
       }
       
-      const lastUpdateTime = wx.getStorageSync('userInfoLastUpdate') || 0;
+      const lastUpdateTime = StorageManager.getStorage('userInfoLastUpdate') || 0;
       const currentTime = Date.now();
       const fiveMinutes = 5 * 60 * 1000; // 5分钟的毫秒数
       // const fiveMinutes = 1 * 1000; // 5分钟的毫秒数
@@ -526,11 +462,11 @@ Page({
       if (currentTime - lastUpdateTime > fiveMinutes) {
         console.log('用户信息缓存已过期，从云端更新');
         await this.updateUserInfoFromCloud();
-        wx.setStorageSync('userInfoLastUpdate', currentTime);
+        StorageManager.setStorage('userInfoLastUpdate', currentTime);
       } else {
         console.log('使用缓存的用户信息');
         // 从缓存加载用户信息
-        const userInfo = wx.getStorageSync('userInfo');
+        const userInfo = StorageManager.getStorage('userInfo');
         if (userInfo) {
           this.setData({ userInfo });
         }
@@ -546,9 +482,9 @@ Page({
    */
   async updateUserInfoFromCloud() {
     try {
-      const partnerId = wx.getStorageSync('partnerId');
-      const coupleId = wx.getStorageSync('coupleId');
-      const bindStatus = wx.getStorageSync('bindStatus');
+      const partnerId = StorageManager.getStorage('partnerId');
+      const coupleId = StorageManager.getStorage('coupleId');
+      const bindStatus = StorageManager.getStorage('bindStatus');
       
       // 检查是否已绑定情侣
       if (!partnerId || !coupleId || bindStatus !== 'bound') {
@@ -568,7 +504,7 @@ Page({
         const cloudPartnerInfo = partnerResult.data[0];
         
         // 获取当前本地存储的情侣信息
-        const localPartnerInfo = wx.getStorageSync('partnerInfo') || {};
+        const localPartnerInfo = StorageManager.getStorage('partnerInfo') || {};
         // 构建更新后的情侣信息对象
         const updatedPartnerInfo = {
           nickName: cloudPartnerInfo.nickName || localPartnerInfo.nickName || '',
@@ -617,7 +553,7 @@ Page({
         }
 
         // 更新本地存储的情侣信息
-        wx.setStorageSync('partnerInfo', updatedPartnerInfo);
+        StorageManager.setStorage('partnerInfo', updatedPartnerInfo);
         
         // 更新页面数据中的情侣信息（如果页面有相关显示）
         if (this.data.partnerInfo) {
@@ -639,7 +575,7 @@ Page({
   async initUserInfo() {
     try {
       // 先从本地缓存获取
-      let userInfo = wx.getStorageSync('userInfo');
+      let userInfo = StorageManager.getStorage('userInfo');
       if (userInfo) {
         this.setData({ userInfo });
         return;
@@ -656,7 +592,7 @@ Page({
         avatarUrl: ''
       };
       
-      wx.setStorageSync('userInfo', userInfo);
+      StorageManager.setStorage('userInfo', userInfo);
       this.setData({ userInfo });
       
     } catch (error) {
@@ -671,7 +607,7 @@ Page({
     this.hideSettings();
     const currentName = this.data.userInfo?.nickname || '';
     
-    wx.showModal({
+    LoadingManager.showModal({
       title: '修改昵称',
       content: '请输入新的昵称',
       editable: true,
@@ -688,11 +624,11 @@ Page({
    * 更新用户昵称
    */
   async updateUserName(newName) {
-    wx.showLoading({ title: '更新中...' });
+    LoadingManager.showLoading('更新中...');
     
     try {
       // 获取当前用户信息并更新昵称字段
-      const userInfo = wx.getStorageSync('userInfo') || {};
+      const userInfo = StorageManager.getStorage('userInfo') || {};
       const updatedUserInfo = {
         ...userInfo,
         nickName: newName,  // 使用统一的字段名nickName
@@ -700,14 +636,14 @@ Page({
       };
       
       // 1. 先更新本地存储
-      wx.setStorageSync('userInfo', updatedUserInfo);
+      StorageManager.setStorage('userInfo', updatedUserInfo);
       
       // 2. 更新页面数据
       this.setData({ userInfo: updatedUserInfo });
       
       
       // 3. 最后更新云端数据库
-      const openid = wx.getStorageSync('openid');
+      const openid = StorageManager.getStorage('openid');
       if (openid) {
         await wx.cloud.database().collection('ld_user_info').where({
           openid: openid
@@ -721,13 +657,13 @@ Page({
         console.log('云端昵称更新成功:', newName);
       }
       
-      wx.hideLoading();
-      wx.showToast({ title: '昵称更新成功', icon: 'success' });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('昵称更新成功', 'success');
       
     } catch (error) {
       console.error('更新昵称失败:', error);
-      wx.hideLoading();
-      wx.showToast({ title: '更新失败', icon: 'error' });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('更新失败', 'error');
     }
   },
 
@@ -747,7 +683,7 @@ Page({
       },
       fail: (error) => {
         console.error('选择头像失败:', error);
-        wx.showToast({ title: '选择头像失败', icon: 'error' });
+        LoadingManager.showToast('选择头像失败', 'error');
       }
     });
   },
@@ -756,7 +692,7 @@ Page({
    * 更新用户头像
    */
   async updateUserAvatar(tempFilePath) {
-    wx.showLoading({ title: '更新头像中...' });
+    LoadingManager.showLoading('更新头像中...');
     
     try {
       // 验证输入参数
@@ -764,7 +700,7 @@ Page({
         throw new Error('无效的图片文件路径');
       }
       
-      const openid = wx.getStorageSync('openid');
+      const openid = StorageManager.getStorage('openid');
       
       // 1. 先删除旧的本地头像文件
       await this.deleteOldLocalAvatar(openid);
@@ -773,25 +709,25 @@ Page({
       const localAvatarPath = await this.saveImageToLocal(tempFilePath);
       
       // 3. 更新本地存储和页面数据
-      const userInfo = wx.getStorageSync('userInfo') || {};
+      const userInfo = StorageManager.getStorage('userInfo') || {};
       const updatedUserInfo = {
         ...userInfo,
         avatarUrl: localAvatarPath,  // 使用本地路径
         localAvatarPath: localAvatarPath  // 更新本地头像路径
       };
       
-      wx.setStorageSync('userInfo', updatedUserInfo);
+      StorageManager.setStorage('userInfo', updatedUserInfo);
       this.setData({ userInfo: updatedUserInfo });
       
       // 4. 异步上传头像到云端并更新云端数据库
        this.uploadAvatarToCloudAsync(localAvatarPath, openid);
       
-      wx.hideLoading();
-      wx.showToast({ title: '头像更新成功', icon: 'success' });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('头像更新成功', 'success');
       
     } catch (error) {
       console.error('更新头像失败:', error);
-      wx.hideLoading();
+      LoadingManager.hideLoading();
       
       // 根据错误类型提供不同的提示信息
       let errorMessage = '更新头像失败';
@@ -803,7 +739,7 @@ Page({
         errorMessage = '图片选择失败，请重新选择';
       }
       
-      wx.showToast({ title: errorMessage, icon: 'error' });
+      LoadingManager.showToast(errorMessage, 'error');
     }
   },
 
@@ -827,9 +763,9 @@ Page({
         });
         
         // 同时更新本地存储中的云端头像URL
-        const userInfo = wx.getStorageSync('userInfo') || {};
+        const userInfo = StorageManager.getStorage('userInfo') || {};
         userInfo.cloudAvatarUrl = cloudAvatarUrl;
-        wx.setStorageSync('userInfo', userInfo);
+        StorageManager.setStorage('userInfo', userInfo);
         
         console.log('云端头像更新成功:', cloudAvatarUrl);
       }
@@ -844,7 +780,7 @@ Page({
    */
   async uploadAvatarToCloud(localFilePath) {
     try {
-      const openid = wx.getStorageSync('openid');
+      const openid = StorageManager.getStorage('openid');
       
       // 1. 先删除用户的旧头像文件
       await this.deleteOldUserAvatar(openid);
@@ -887,7 +823,7 @@ Page({
   async deleteOldUserAvatar(openid) {
     try {
       // 从缓存中获取用户信息
-      const userInfo = wx.getStorageSync('userInfo') || {};
+      const userInfo = StorageManager.getStorage('userInfo') || {};
       const cloudAvatarUrl = userInfo.cloudAvatarUrl;
       
       // 如果缓存中有云端头像URL，则进行精确删除
@@ -901,7 +837,7 @@ Page({
           
           // 删除成功后清空缓存中的cloudAvatarUrl
           userInfo.cloudAvatarUrl = '';
-          wx.setStorageSync('userInfo', userInfo);
+          StorageManager.setStorage('userInfo', userInfo);
           
         } catch (deleteError) {
           console.log('云端头像删除失败，错误信息:', deleteError.message);
@@ -922,7 +858,7 @@ Page({
    */
   showUnbindConfirm() {
     this.hideSettings();
-    wx.showModal({
+    LoadingManager.showModal({
       title: '已被锁死，无法解绑 😏',
       content: '哈哈，想解绑？门都没有！你们的爱情已经被我牢牢锁住了~',
       showCancel: false,
@@ -936,7 +872,7 @@ Page({
    */
   async deleteOldLocalAvatar(openid) {
     try {
-      const userInfo = wx.getStorageSync('userInfo');
+      const userInfo = StorageManager.getStorage('userInfo');
       const oldLocalAvatarPath = userInfo?.localAvatarPath;
       
       console.log('检查需要删除的旧头像:', oldLocalAvatarPath);

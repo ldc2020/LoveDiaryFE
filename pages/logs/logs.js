@@ -1,5 +1,6 @@
 // 引入工具函数
 const util = require('../../../utils/util.js')
+const StorageManager = require('../../../utils/storageManager.js')
 
 Page({
   data: {
@@ -7,7 +8,7 @@ Page({
   },
   onLoad() {
     this.setData({
-      logs: (wx.getStorageSync('logs') || []).map(log => {
+      logs: (StorageManager.getStorage('logs') || []).map(log => {
         return {
           date: util.formatTime(new Date(log)),
           timeStamp: log

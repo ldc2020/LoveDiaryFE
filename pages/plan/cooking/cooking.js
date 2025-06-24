@@ -653,7 +653,7 @@ ${recipeText}
       createTime: new Date(),
       updateTime: new Date(),
       status: 'active',
-      finishedImage: '', // 成品图片
+      localPath: '', // 成品图片
       likes: 0,
       comments: []
     };
@@ -834,7 +834,8 @@ ${recipeText}
   },
 
   /**
-   * 删除菜谱
+   * 删除菜谱 - 使用DataManager完整删除逻辑
+   * 包括：云端数据、云端图片、本地图片文件、图片缓存映射
    */
   async deleteRecipe() {
     const recipe = this.data.currentRecipe;
@@ -851,24 +852,19 @@ ${recipeText}
     if (!result.confirm) return;
     
     try {
-      const db = wx.cloud.database();
-      await db.collection(COLLECTION_NAME).doc(recipe._id).remove();
+      console.log('开始删除菜谱:', recipe._id, recipe);
       
-      console.log('删除的菜谱ID:', recipe._id);
-      // 更新本地数据
+      // 使用DataManager的完整删除逻辑
+      // 这将自动处理：云端数据删除、云端图片删除、本地图片文件删除、图片缓存映射删除
+      await this.dataManager.deleteData(recipe._id, recipe);
+      
+      console.log('菜谱删除成功:', recipe._id);
+      
+      // 更新本地显示数据
       const updatedList = this.data.recipeList.filter(item => item._id !== recipe._id);
       this.setData({
         recipeList: updatedList
       });
-      
-      // 直接清除本地缓存中的对应数据
-      const cacheKey = `${CACHE_PREFIX}_${this.data.coupleId}`;
-      const cachedData = wx.getStorageSync(cacheKey) || [];
-      if (Array.isArray(cachedData)) {
-        const filteredCacheData = cachedData.filter(item => item._id !== recipe._id);
-        wx.setStorageSync(cacheKey, filteredCacheData);
-        console.log('已从缓存中删除菜谱:', recipe._id);
-      }
       
       this.hideDetailModal();
       
@@ -896,6 +892,15 @@ ${recipeText}
     try {
       this.setData({ uploadingImage: true });
       
+      // 检查当前菜谱
+      if (!this.data.currentRecipe || !this.data.currentRecipe._id) {
+        wx.showToast({
+          title: '请先选择菜谱',
+          icon: 'none'
+        });
+        return;
+      }
+      
       // 选择图片
       const chooseResult = await new Promise((resolve, reject) => {
         wx.chooseImage({
@@ -909,42 +914,35 @@ ${recipeText}
       
       const tempFilePath = chooseResult.tempFilePaths[0];
       
-      // 上传到云存储
-      const uploadResult = await wx.cloud.uploadFile({
-        cloudPath: `cooking/${this.data.coupleId}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`,
-        filePath: tempFilePath
-      });
-      
-      const imageUrl = uploadResult.fileID;
-      
-      // 更新数据库
-      const db = wx.cloud.database();
-      await db.collection(COLLECTION_NAME).doc(this.data.currentRecipe._id).update({
-        data: {
-          finishedImage: imageUrl,
-          updateTime: new Date()
+      // 使用dataManager的完整图片处理流程
+      const result = await this.dataManager.uploadImageWithFullProcess(
+        tempFilePath, 
+        this.data.currentRecipe._id,
+        
+        (imageUrl) => {
+          // 本地数据更新回调 - 更新currentRecipe和recipeList中对应的项目
+          const updateData = {
+            [`currentRecipe.imageLocalPath`]: imageUrl
+          };
+          
+          // 同时更新recipeList中对应的项目，确保卡片也能立即显示图片
+          const updatedList = this.data.recipeList.map(item => 
+            item._id === this.data.currentRecipe._id 
+              ? { ...item, imageLocalPath: imageUrl } 
+              : item
+          );
+          updateData.recipeList = updatedList;
+          
+          this.setData(updateData);
         }
-      });
-      
-      // 更新本地数据
-      const updatedRecipe = {
-        ...this.data.currentRecipe,
-        finishedImage: imageUrl
-      };
-      
-      const updatedList = this.data.recipeList.map(item => 
-        item._id === updatedRecipe._id ? updatedRecipe : item
       );
-      
-      this.setData({
-        recipeList: updatedList,
-        currentRecipe: updatedRecipe
-      });
       
       wx.showToast({
         title: '上传成功',
         icon: 'success'
       });
+      
+      console.log('图片上传完整流程完成:', result);
       
     } catch (error) {
       console.error('上传图片失败:', error);

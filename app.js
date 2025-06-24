@@ -1,4 +1,8 @@
 // app.js
+// 引入工具类
+const StorageManager = require('./utils/storageManager');
+const LoadingManager = require('./utils/loadingManager');
+
 App({
   
   onLaunch() {
@@ -38,20 +42,16 @@ App({
    */
   checkUserStatus() {
     // 检查用户是否已注册
-    const userInfo = wx.getStorageSync('userInfo');
+    const userInfo = StorageManager.getStorage('userInfo');
     if (userInfo) {
       // 用户已注册，检查绑定状态
-      const bindStatus = wx.getStorageSync('bindStatus');
+      const bindStatus = StorageManager.getStorage('bindStatus');
       if (bindStatus === 'bound') {
         // 已绑定，跳转到首页
-        wx.reLaunch({
-          url: '/pages/home/home'
-        });
+        LoadingManager.navigateTo('/pages/home/home', true);
       } else {
         // 未绑定，跳转到绑定页面
-        wx.reLaunch({
-          url: '/pages/bind/bind'
-        });
+        LoadingManager.navigateTo('/pages/bind/bind', true);
       }
     } else {
       // 首次登录，获取用户信息并注册
@@ -64,9 +64,7 @@ App({
    */
   registerUser() {
     // 跳转到登录页面，让用户输入信息
-    wx.reLaunch({
-      url: '/pages/index/index'
-    });
+    LoadingManager.navigateTo('/pages/index/index', true);
   },
 
   globalData: {

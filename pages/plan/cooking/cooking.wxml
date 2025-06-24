@@ -34,9 +34,9 @@
         data-recipe="{{item}}"
       >
         <!-- 菜谱图片 - 只有当存在图片时才显示 -->
-        <view wx:if="{{item.finishedImage}}" class="card-image">
+        <view wx:if="{{item.imageLocalPath}}" class="card-image">
           <image 
-            src="{{item.finishedImage}}"
+            src="{{item.imageLocalPath}}"
             class="recipe-image"
             mode="aspectFill"
           />
@@ -169,11 +169,11 @@
     <scroll-view class="modal-content scroll-hidden" scroll-y>
       <!-- 菜谱基本信息 -->
       <view class="recipe-info">
-        <!-- 成品图片 - 只有当存在图片时才显示 -->
-        <view wx:if="{{currentRecipe.finishedImage}}" class="finished-image-section">
+        <!-- 成品图片 - 只有当存在图片且不在编辑模式时才显示 -->
+        <view wx:if="{{currentRecipe.imageLocalPath && !isEditing}}" class="finished-image-section">
           <view class="finished-image">
             <image 
-              src="{{currentRecipe.finishedImage}}"
+              src="{{currentRecipe.imageLocalPath}}"
               class="finished-img"
               mode="aspectFill"
             />
@@ -335,7 +335,7 @@
       <view wx:if="{{!isEditing}}" class="action-buttons">
         <button class="action-btn upload-btn" bindtap="uploadFinishedImage">
           <text class="iconfont icon-camera"></text>
-          <text>{{uploadingImage ? '上传中...' : '上传成品图'}}</text>
+          <text>{{uploadingImage ? '上传中...' : (currentRecipe.imageLocalPath ? '更新成品图' : '上传成品图')}}</text>
         </button>
         <button class="action-btn edit-btn" bindtap="startEditRecipe">
           <text class="iconfont icon-edit"></text>

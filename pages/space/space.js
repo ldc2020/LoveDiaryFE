@@ -6,6 +6,9 @@
 //   查pageSize条数据库中的数据，和当前缓存数中的pageSize条做对比，看是否有新数据
 
 const CompressUtil = require('../../utils/compressUtil');
+const ImageHandler = require('../../utils/imageHandler');
+const LoadingManager = require('../../utils/loadingManager');
+const StorageManager = require('../../utils/storageManager');
   
 Page({
   data: {
@@ -44,20 +47,18 @@ Page({
 
   onLoad() {
     // 检查绑定状态
-    const coupleId = wx.getStorageSync('coupleId');
-    const bindStatus = wx.getStorageSync('bindStatus');
+    const coupleId = StorageManager.getStorage('coupleId');
+    const bindStatus = StorageManager.getStorage('bindStatus');
     
     if (!coupleId || bindStatus !== 'bound') {
       // 未绑定，跳转到绑定页面
-      wx.reLaunch({
-        url: '/pages/bind/bind'
-      });
+      LoadingManager.navigateTo('/pages/bind/bind', true);
       return;
     }
 
     // 获取当前用户openid和伴侣ID
-    const currentUserOpenid = wx.getStorageSync('openid');
-    const partnerId = wx.getStorageSync('partnerId');
+    const currentUserOpenid = StorageManager.getStorage('openid');
+    const partnerId = StorageManager.getStorage('partnerId');
     
     this.setData({
       coupleId: coupleId,
@@ -66,7 +67,7 @@ Page({
     });
 
     // 加载背景图片
-    const cachedBackgroundImage = wx.getStorageSync('showbackgroundImage');
+    const cachedBackgroundImage = StorageManager.getStorage('showbackgroundImage');
     if (cachedBackgroundImage) {
       this.setData({ backgroundImage: cachedBackgroundImage });
     }
@@ -81,9 +82,7 @@ Page({
     }).catch(error => {
       console.error('获取用户信息失败:', error);
       // 如果获取用户信息失败，跳转到绑定页面
-      wx.reLaunch({
-        url: '/pages/bind/bind'
-      });
+      LoadingManager.navigateTo('/pages/bind/bind', true);
     });
 
     // 获取情侣信息
@@ -150,18 +149,10 @@ Page({
         变化: this.formatFileSize(afterStats.totalSize - beforeStats.totalSize)
       });
       
-      wx.showToast({
-        title: '刷新成功',
-        icon: 'success',
-        duration: 1500
-      });
+      LoadingManager.showToast('刷新成功', 'success');
     } catch (error) {
       console.error('刷新失败:', error);
-      wx.showToast({
-        title: '刷新失败',
-        icon: 'none',
-        duration: 1500
-      });
+      LoadingManager.showToast('刷新失败', 'none');
     } finally {
       this.setData({ isRefreshing: false });
       wx.stopPullDownRefresh();
@@ -201,10 +192,7 @@ Page({
     const remainingCount = maxImages - currentCount;
     
     if (remainingCount <= 0) {
-      wx.showToast({
-        title: '最多只能选择9张图片',
-        icon: 'none'
-      });
+      LoadingManager.showToast('最多只能选择9张图片', 'none');
       return;
     }
     
@@ -221,10 +209,7 @@ Page({
       },
       fail: (error) => {
         console.error('选择图片失败:', error);
-        wx.showToast({
-          title: '选择图片失败',
-          icon: 'none'
-        });
+        LoadingManager.showToast('选择图片失败', 'none');
       }
     });
   },
@@ -293,7 +278,7 @@ Page({
   getUserInfo() {
     return new Promise((resolve, reject) => {
       // 先尝试从缓存获取
-      const cachedUserInfo = wx.getStorageSync('userInfo');
+      const cachedUserInfo = StorageManager.getStorage('userInfo');
       if (cachedUserInfo) {
         resolve(cachedUserInfo);
         return;
@@ -302,7 +287,7 @@ Page({
 
       // 如果缓存中没有，则从云数据库获取
       const db = wx.cloud.database();
-      const openid = wx.getStorageSync('openid');
+      const openid = StorageManager.getStorage('openid');
       
       if (!openid) {
         reject(new Error('未找到openid'));
@@ -314,7 +299,7 @@ Page({
       }).get().then(res => {
         if (res.data.length > 0) {
           const userInfo = res.data[0];
-          wx.setStorageSync('userInfo', userInfo);
+          StorageManager.setStorage('userInfo', userInfo);
           resolve(userInfo);
         } else {
           reject(new Error('未找到用户信息'));
@@ -327,7 +312,7 @@ Page({
    * 获取情侣ID
    */
   getCoupleId() {
-    const cachedCoupleId = wx.getStorageSync('coupleId');
+    const cachedCoupleId = StorageManager.getStorage('coupleId');
     if (cachedCoupleId) {
       return cachedCoupleId;
     }
@@ -335,7 +320,7 @@ Page({
     // 如果缓存中没有，可以从用户信息中获取
     const userInfo = this.data.userInfo;
     if (userInfo && userInfo.coupleId) {
-      wx.setStorageSync('coupleId', userInfo.coupleId);
+      StorageManager.setStorage('coupleId', userInfo.coupleId);
       return userInfo.coupleId;
     }
     
@@ -349,7 +334,7 @@ Page({
   getPartnerInfo() {
     return new Promise((resolve, reject) => {
       // 先尝试从缓存获取
-      const cachedPartnerInfo = wx.getStorageSync('partnerInfo');
+      const cachedPartnerInfo = StorageManager.getStorage('partnerInfo');
       if (cachedPartnerInfo) {
         // 检查缓存是否完整（包含本地头像路径）
         if (cachedPartnerInfo.avatarUrl && cachedPartnerInfo.cloudAvatarUrl) {
@@ -361,7 +346,7 @@ Page({
       console.log('获取情侣信息'+partnerId);
       // 如果缓存中没有或不完整，则从云数据库获取
       const db = wx.cloud.database();
-      const partnerId = wx.getStorageSync('partnerId');
+      const partnerId = StorageManager.getStorage('partnerId');
       console.log('获取情侣信息：'+partnerId);
       if (!partnerId) {
         reject(new Error('未找到partnerId'));
@@ -386,7 +371,7 @@ Page({
           
           // 只有在缓存不存在或不完整时才更新缓存
           if (!cachedPartnerInfo || !cachedPartnerInfo.avatarUrl || !cachedPartnerInfo.cloudAvatarUrl) {
-            wx.setStorageSync('partnerInfo', partnerInfo);
+            StorageManager.setStorage('partnerInfo', partnerInfo);
           }
           
           resolve(partnerInfo);
@@ -532,10 +517,7 @@ Page({
         this.setData({
           loadingMore: false
         });
-        wx.showToast({
-          title: '加载更多失败',
-          icon: 'none'
-        });
+        LoadingManager.showToast('加载更多失败', 'none');
       } else {
         // 如果云端获取失败，使用缓存数据
         const cachedMoments = this.getLocalCachedMoments();
@@ -544,10 +526,7 @@ Page({
           loading: false
         });
         
-        wx.showToast({
-          title: '加载失败，显示缓存数据',
-          icon: 'none'
-        });
+        LoadingManager.showToast('加载失败，显示缓存数据', 'none');
       }
     }
   },
@@ -558,7 +537,7 @@ Page({
   getLocalCachedMoments() {
     try {
       const cacheKey = `coupleMoments_${this.data.coupleId}`;
-      const cachedData = wx.getStorageSync(cacheKey) || [];
+      const cachedData = StorageManager.getStorage(cacheKey) || [];
       const sortedData = cachedData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       return sortedData;
     } catch (error) {
@@ -658,7 +637,7 @@ Page({
     try {
       // 加载缓存统计信息
       const cacheStatsKey = `cacheStats_${this.data.coupleId}`;
-      const savedStats = wx.getStorageSync(cacheStatsKey) || {
+      const savedStats = StorageManager.getStorage(cacheStatsKey) || {
         totalSize: 0,
         imageCount: 0,
         lastCleanup: 0
@@ -666,7 +645,7 @@ Page({
       
       // 加载图片缓存映射
       const imageCacheKey = `imageCache_${this.data.coupleId}`;
-      const savedImageCache = wx.getStorageSync(imageCacheKey) || {};
+      const savedImageCache = StorageManager.getStorage(imageCacheKey) || {};
       
       // 详细输出加载的缓存内容用于调试
  
@@ -837,7 +816,7 @@ Page({
       
       try {
         const cacheKey = `coupleMoments_${this.data.coupleId}`;
-        const cachedMoments = wx.getStorageSync(cacheKey) || [];
+        const cachedMoments = StorageManager.getStorage(cacheKey) || [];
         
         // 为每个缓存的图片找到对应瞬间的访问时间
         for (const [fileID, cacheItem] of imageCache.entries()) {
@@ -925,7 +904,7 @@ Page({
     
     // 立即更新本地存储中的imageCache
     const imageCacheObj = Object.fromEntries(imageCache.entries());
-    wx.setStorageSync(`imageCache_${this.data.coupleId}`, imageCacheObj);
+    StorageManager.setStorage(`imageCache_${this.data.coupleId}`, imageCacheObj);
     
     this.setData({ imageCache, cacheStats });
     console.log(`移除缓存项: ${fileID}, 释放空间: ${this.formatFileSize(cacheItem.size)}`);
@@ -942,7 +921,7 @@ Page({
     // 从coupleMoments本地存储中删除包含该fileID的瞬间数据
     try {
       const cacheKey = `coupleMoments_${this.data.coupleId}`;
-      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      const cachedMoments = StorageManager.getStorage(cacheKey) || [];
       
       // 过滤掉包含该fileID的瞬间
       const filteredMoments = cachedMoments.filter(moment => {
@@ -965,7 +944,7 @@ Page({
       
       // 更新本地存储
       if (filteredMoments.length !== cachedMoments.length) {
-        wx.setStorageSync(cacheKey, filteredMoments);
+        StorageManager.setStorage(cacheKey, filteredMoments);
         console.log(`从coupleMoments中删除了${cachedMoments.length - filteredMoments.length}个包含fileID ${fileID}的瞬间`);
       }
     } catch (error) {
@@ -990,7 +969,7 @@ Page({
     
     try {
       const cacheKey = `coupleMoments_${this.data.coupleId}`;
-      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      const cachedMoments = StorageManager.getStorage(cacheKey) || [];
       const momentsToKeep = [];
       
       // 遍历所有瞬间，检查访问时间
@@ -1020,7 +999,7 @@ Page({
       }
       
       // 更新coupleMoments缓存，只保留未过期的瞬间
-      wx.setStorageSync(cacheKey, momentsToKeep);
+      StorageManager.setStorage(cacheKey, momentsToKeep);
       
     } catch (error) {
       console.error('智能清理过程中发生错误:', error);
@@ -1050,8 +1029,8 @@ Page({
       const imageCacheObj = Object.fromEntries(imageCache.entries());
       
       
-      wx.setStorageSync(`imageCache_${coupleId}`, imageCacheObj);
-      wx.setStorageSync(`cacheStats_${coupleId}`, cacheStats);
+      StorageManager.setStorage(`imageCache_${coupleId}`, imageCacheObj);
+      StorageManager.setStorage(`cacheStats_${coupleId}`, cacheStats);
     } catch (error) {
       console.error('保存缓存数据失败:', error);
     }
@@ -1064,7 +1043,7 @@ Page({
   updateMomentLastAccess(fileID) {
     try {
       const cacheKey = `coupleMoments_${this.data.coupleId}`;
-      const cachedMoments = wx.getStorageSync(cacheKey) || [];
+      const cachedMoments = StorageManager.getStorage(cacheKey) || [];
       const now = Date.now();
       let updated = false;
       
@@ -1093,7 +1072,7 @@ Page({
       
       // 如果有更新，保存到本地存储
       if (updated) {
-        wx.setStorageSync(cacheKey, updatedMoments);
+        StorageManager.setStorage(cacheKey, updatedMoments);
       }
     } catch (error) {
       console.warn('更新瞬间访问时间失败:', error);
@@ -1149,7 +1128,7 @@ Page({
       const cacheKey = `coupleMoments_${this.data.coupleId}`;
       
       // 获取当前缓存的数据，用于清理超出限制的图片文件
-      const currentCacheData = wx.getStorageSync(cacheKey) || [];
+      const currentCacheData = StorageManager.getStorage(cacheKey) || [];
       
       // 智能缓存：保存最新的200条数据，支持用户加载更多内容而不丢失
       // 增加缓存限制以避免用户下拉刷新时丢失已加载的图片
@@ -1175,7 +1154,7 @@ Page({
       // 清理超过限制的图片文件，防止孤儿文件
       this.cleanupOrphanedImages(cacheData);
       
-      wx.setStorageSync(cacheKey, cacheData);
+      StorageManager.setStorage(cacheKey, cacheData);
     } catch (error) {
       console.error('更新本地缓存失败:', error);
     }
@@ -1350,7 +1329,7 @@ Page({
       
       try {
         const cacheKey = `coupleMoments_${this.data.coupleId}`;
-        const cachedMoments = wx.getStorageSync(cacheKey) || [];
+        const cachedMoments = StorageManager.getStorage(cacheKey) || [];
         const momentsToKeep = [];
         
         // 遍历所有瞬间，检查访问时间
@@ -1378,7 +1357,7 @@ Page({
         }
         
         // 更新coupleMoments缓存，只保留未过期的瞬间
-        wx.setStorageSync(cacheKey, momentsToKeep);
+        StorageManager.setStorage(cacheKey, momentsToKeep);
         
       } catch (error) {
         console.error('智能清理过程中发生错误:', error);
@@ -1391,13 +1370,12 @@ Page({
     this.saveCacheData();
     
     if (showToast) {
-      wx.showToast({
-        title: force ? 
+      LoadingManager.showToast(
+        force ? 
           `强制清理完成\n清理${cleanedCount}个文件` : 
           `智能清理完成\n清理${cleanedCount}个文件`,
-        icon: 'success',
-        duration: 2000
-      });
+        'success'
+      );
     }
     
     console.log(`缓存清理完成: 清理了${cleanedCount}个文件, 释放${this.formatFileSize(cleanedSize)}空间`);
@@ -1468,38 +1446,33 @@ Page({
 
   /**
    * 选择图片
+   * @deprecated 使用 ImageHandler.chooseImages 替代
    */
-  chooseImages() {
+  async chooseImages() {
     const maxImages = 9;
     const currentCount = this.data.selectedImages.length;
     const remainingCount = maxImages - currentCount;
     
     if (remainingCount <= 0) {
-      wx.showToast({
-        title: `最多只能选择${maxImages}张图片`,
-        icon: 'none'
-      });
+      LoadingManager.showToast(`最多只能选择${maxImages}张图片`);
       return;
     }
     
-    wx.chooseMedia({
-      count: remainingCount,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        const newImages = res.tempFiles.map(file => file.tempFilePath);
+    try {
+      const tempFilePaths = await ImageHandler.chooseImages({
+        count: remainingCount,
+        showActionSheet: false // 直接显示选择界面
+      });
+      
+      if (tempFilePaths && tempFilePaths.length > 0) {
         this.setData({
-          selectedImages: [...this.data.selectedImages, ...newImages]
-        });
-      },
-      fail: (error) => {
-        console.error('选择图片失败:', error);
-        wx.showToast({
-          title: '选择图片失败',
-          icon: 'none'
+          selectedImages: [...this.data.selectedImages, ...tempFilePaths]
         });
       }
-    });
+    } catch (error) {
+      console.error('选择图片失败:', error);
+      LoadingManager.showError('选择图片失败');
+    }
   },
 
   /**
@@ -1516,26 +1489,18 @@ Page({
 
   /**
    * 压缩图片（如果超过1MB）
+   * @deprecated 使用 ImageHandler.compressImage 替代
    * @param {string} imagePath - 图片路径
    * @returns {Promise<string>} - 压缩后的图片路径
    */
   async compressImageIfNeeded(imagePath) {
     try {
-      // 使用统一的压缩工具，目标大小1MB
-      const result = await CompressUtil.compressImage(imagePath, 100 * 1024);
-      
-      console.log(`原始大小: ${CompressUtil.formatFileSize(result.originalSize)}`);
-      console.log(`压缩后大小: ${CompressUtil.formatFileSize(result.compressedSize)}`);
-      
-      return result.tempFilePath;
+      // 使用统一的图片处理工具
+      return await ImageHandler.compressImage(imagePath, 100 * 1024);
     } catch (error) {
       console.error('图片压缩失败:', error);
       // 压缩失败时返回原图片路径
-      wx.showToast({
-        title: '图片压缩失败，使用原图',
-        icon: 'none',
-        duration: 2000
-      });
+      LoadingManager.showToast('图片压缩失败，使用原图');
       return imagePath;
     }
   },
@@ -1604,16 +1569,13 @@ Page({
     
     // 强制要求用户必须选择图片才能发布
     if (images.length === 0) {
-      wx.showToast({
-        title: '请至少选择一张图片',
-        icon: 'none'
-      });
+      LoadingManager.showToast('请至少选择一张图片', 'none');
       return;
     }
     
     // 检查是否有内容（可选，但建议有内容描述）
     if (!content) {
-      wx.showModal({
+      LoadingManager.showModal({
         title: '提示',
         content: '您还没有添加文字描述，确定要发布吗？',
         success: (res) => {
@@ -1640,9 +1602,7 @@ Page({
     
     this.setData({ publishing: true });
     
-    wx.showLoading({
-      title: '发布中...'
-    });
+    LoadingManager.showLoading('发布中...');
     
     try {
       const db = wx.cloud.database();
@@ -1667,7 +1627,7 @@ Page({
       }
       
       // 保存瞬间到数据库，只存储用户openid，用户名和头像在显示时动态获取
-      const userInfo = wx.getStorageSync('userInfo');
+      const userInfo = StorageManager.getStorage('userInfo');
       const momentData = {
         _id: Date.now().toString(), // 使用13位时间戳作为_id
         coupleId: this.data.coupleId,
@@ -1680,7 +1640,7 @@ Page({
       };
       
       if (!momentData._openid) {
-        wx.showToast({ title: '用户信息获取失败', icon: 'error' });
+        LoadingManager.showToast('用户信息获取失败', 'error');
         return;
       }
       
@@ -1688,11 +1648,8 @@ Page({
         data: momentData
       });
       
-      wx.hideLoading();
-      wx.showToast({
-        title: '发布成功',
-        icon: 'success'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('发布成功', 'success');
       
       // 隐藏发布模态框
       this.hidePublishModal();
@@ -1705,11 +1662,8 @@ Page({
       
     } catch (error) {
       console.error('发布瞬间失败:', error);
-      wx.hideLoading();
-      wx.showToast({
-        title: '发布失败，请重试',
-        icon: 'none'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('发布失败，请重试', 'none');
     } finally {
       this.setData({ publishing: false });
     }
@@ -1778,10 +1732,7 @@ Page({
       
     } catch (error) {
       console.error('点赞失败:', error);
-      wx.showToast({
-        title: '点赞失败',
-        icon: 'none'
-      });
+      LoadingManager.showToast('点赞失败', 'none');
     }
   },
   
@@ -1895,10 +1846,7 @@ Page({
       } else {
         // 全部失败，回滚本地UI状态
         this.rollbackLocalLikes();
-        wx.showToast({
-          title: '点赞同步失败',
-          icon: 'none'
-        });
+        LoadingManager.showToast('点赞同步失败', 'none');
       }
       
     } catch (error) {
@@ -1907,10 +1855,7 @@ Page({
       // 提交失败时，回滚本地UI状态
       this.rollbackLocalLikes();
       
-      wx.showToast({
-        title: '点赞同步失败',
-        icon: 'none'
-      });
+      LoadingManager.showToast('点赞同步失败', 'none');
     } finally {
       // 清空队列和定时器
       this.likeQueue = {};
@@ -2002,31 +1947,23 @@ Page({
     const momentId = this.data.currentCommentMomentId;
     
     if (!commentText) {
-      wx.showToast({
-        title: '请输入评论内容',
-        icon: 'none'
-      });
+      LoadingManager.showToast('请输入评论内容', 'none');
       return;
     }
     
     if (!momentId) {
-      wx.showToast({
-        title: '评论失败',
-        icon: 'none'
-      });
+      LoadingManager.showToast('评论失败', 'none');
       return;
     }
     
-    wx.showLoading({
-      title: '发布中...'
-    });
+    LoadingManager.showLoading('发布中...');
     
     try {
       const db = wx.cloud.database();
       const _ = db.command;
       
       // 评论只存储内容、时间戳和用户openid，用户名和头像在显示时动态获取
-      const userInfo = wx.getStorageSync('userInfo');
+      const userInfo = StorageManager.getStorage('userInfo');
       const comment = {
         content: commentText,
         timestamp: new Date(),
@@ -2034,7 +1971,7 @@ Page({
       };
       
       if (!comment._openid) {
-        wx.showToast({ title: '用户信息获取失败', icon: 'error' });
+        LoadingManager.showToast('用户信息获取失败', 'error');
         return;
       }
       
@@ -2045,11 +1982,8 @@ Page({
         }
       });
       
-      wx.hideLoading();
-      wx.showToast({
-        title: '评论成功',
-        icon: 'success'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('评论成功', 'success');
       
       // 隐藏评论模态框
       this.hideCommentModal();
@@ -2059,11 +1993,8 @@ Page({
       
     } catch (error) {
       console.error('发布评论失败:', error);
-      wx.hideLoading();
-      wx.showToast({
-        title: '评论失败，请重试',
-        icon: 'none'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('评论失败，请重试', 'none');
     }
   },
 
@@ -2071,31 +2002,36 @@ Page({
    * 删除瞬间
    */
   async deleteMoment(e) {
+    console.log('deleteMoment 函数被调用', e);
     const momentId = e.currentTarget.dataset.id;
     let momentIndex = e.currentTarget.dataset.index;
     
-    if (!momentId) return;
+    console.log('momentId:', momentId, 'momentIndex:', momentIndex);
+    
+    if (!momentId) {
+      console.log('momentId 为空，退出函数');
+      return;
+    }
     
     // 如果没有传递index，则查找对应的索引
     if (momentIndex === undefined) {
       momentIndex = this.data.moments.findIndex(moment => moment._id === momentId);
+      console.log('重新查找的 momentIndex:', momentIndex);
     }
     
-    const result = await new Promise((resolve) => {
-      wx.showModal({
-        title: '确认删除',
-        content: '确定要删除这条瞬间吗？',
-        success: (res) => {
-          resolve(res.confirm);
-        }
-      });
+    console.log('准备显示确认删除对话框');
+    const result = await LoadingManager.showModal({
+      title: '确认删除',
+      content: '确定要删除这条瞬间吗？'
     });
     
-    if (!result) return;
+    console.log('用户确认结果:', result);
+    if (!result) {
+      console.log('用户取消删除，退出函数');
+      return;
+    }
     
-    wx.showLoading({
-      title: '删除中...'
-    });
+    LoadingManager.showLoading('删除中...');
     
     try {
       const db = wx.cloud.database();
@@ -2170,19 +2106,13 @@ Page({
       // 更新本地缓存
       this.updateLocalCache(moments);
       
-      wx.hideLoading();
-      wx.showToast({
-        title: '删除成功',
-        icon: 'success'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('删除成功', 'success');
       
     } catch (error) {
       console.error('删除瞬间失败:', error);
-      wx.hideLoading();
-      wx.showToast({
-        title: '删除失败，请重试',
-        icon: 'none'
-      });
+      LoadingManager.hideLoading();
+      LoadingManager.showToast('删除失败，请重试', 'none');
     }
   },
 
@@ -2215,13 +2145,13 @@ Page({
    * 手动清理缓存 - 提供给用户的接口
    */
   async manualCacheCleanup() {
-    wx.showModal({
+    LoadingManager.showModal({
       title: '缓存清理',
       content: '选择清理方式：\n智能清理 - 清理7天未访问的图片\n强制清理 - 清理所有缓存图片',
       confirmText: '智能清理',
       cancelText: '强制清理',
       success: async (res) => {
-        wx.showLoading({ title: '清理中...' });
+        LoadingManager.showLoading('清理中...');
         
         try {
           const result = await this.clearImageCache({ 
@@ -2229,18 +2159,15 @@ Page({
             showToast: false 
           });
           
-          wx.hideLoading();
-          wx.showModal({
+          LoadingManager.hideLoading();
+          LoadingManager.showModal({
             title: '清理完成',
             content: `清理了${result.cleanedCount}个文件\n释放空间：${result.cleanedSize}\n剩余：${result.remainingCount}个文件(${result.remainingSize})`,
             showCancel: false
           });
         } catch (error) {
-          wx.hideLoading();
-          wx.showToast({
-            title: '清理失败',
-            icon: 'error'
-          });
+          LoadingManager.hideLoading();
+          LoadingManager.showToast('清理失败', 'error');
         }
       }
     });
@@ -2252,7 +2179,7 @@ Page({
   showCacheStatus() {
     const stats = this.getCacheStats();
     
-    wx.showModal({
+    LoadingManager.showModal({
       title: '缓存状态',
       content: `已用空间：${stats.formattedTotalSize} / ${stats.formattedMaxSize}\n使用率：${stats.usagePercent}\n图片数量：${stats.imageCount}个\n上次清理：${stats.lastCleanup}`,
       confirmText: '清理缓存',
